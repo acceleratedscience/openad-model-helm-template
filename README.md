@@ -1,8 +1,11 @@
-# Helm chart default template for openad models on Openshift
+# Helm chart template for OpenAD models
+
+This repo is made to serve as a bootstrap for OpenAD models that run inference on OpenShift. It implements many templates that can take a project and have it running on Openshift in minutes.
 
 ## Install This Template
+cd into your OpenAD model project root directory and run the following command:
 ```shell
-git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git
+git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git .
 ```
 
 ## Configuration
@@ -34,3 +37,36 @@ image:
 ```
 
 These changes should be enough to run a default OpenAD model.
+
+### SSH Example
+Create ssh key secret `my-ssh-privatekey-name` (create a unique name).
+
+```shell
+oc create secret generic my-ssh-privatekey-name \
+  --from-file=ssh-privatekey=$HOME/.ssh/YOUR_PRIVATE_SSH_KEY_HERE \
+  --type=kubernetes.io/ssh-auth
+```
+
+Grant Access to the Builder Service Account for the Secret
+```shell
+oc secrets link builder my-ssh-privatekey-name
+```
+
+Update `buildConfig` in the [values.yaml](./helm-chart/values.yaml) configuration.
+```yaml
+buildConfig:
+  ...
+  sourceSecret:
+    name: my-ssh-privatekey-name
+```
+
+## Install the Helm Chart on Openshift
+Install the Helm Chart
+```shell
+helm install <MODEL_NAME> ./helm-chart
+```
+
+Start a new build
+```shell
+oc start-build <MODEL_NAME>-build
+```
