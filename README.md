@@ -3,9 +3,12 @@
 This repo is made to serve as a bootstrap for OpenAD models that run inference on OpenShift. It implements many templates that can take a project and have it running on Openshift in minutes.
 
 ## Install This Template
-cd into your OpenAD model project root directory and run the following command:
+In your project root directory run the following command:
 ```shell
-git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git .
+git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git && \
+    mkdir helm-chart && \
+    cp -r openad-model-helm-template/helm-chart/* helm-chart && \
+    rm -rf openad-model-helm-template
 ```
 
 ## Configuration
