@@ -12,21 +12,19 @@ RUN apt-get update && \
 # Install uv package installer or use your own package installer
 RUN pip install uv
 
+# create virtual environment
+RUN uv venv /opt/venv
+
+# Place entry points in the environment at the front of the path
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Copy project files
 COPY . .
 
-# Copy the SSH key from the secret environment variable
-# Not best practice to store ssh key. will need to change for prod.
-ARG SSH_PRIVATE_KEY
-RUN mkdir -p /root/.ssh && \
-    echo "$SSH_PRIVATE_KEY" > /root/.ssh/id_rsa && \
-    chmod 600 /root/.ssh/id_rsa
-
-# Setup SSH config. Add your own domain here to prevent host key verification error.
-RUN ssh-keyscan -t rsa github.com >> /root/.ssh/known_hosts
-
-# Install dependencies
-RUN uv pip install -e . --system
+# In OpenShift Buildah SSH secret is volume mounted instead of BuildKit
+# Load the ssh key
+RUN eval "$(ssh-agent -s)" && ssh-add /root/.ssh/ssh-privatekey \
+    && uv pip install --no-cache .
 
 # Final stage
 FROM python:3.10-slim
@@ -37,7 +35,7 @@ ENV PYTHONPATH=/app
 WORKDIR /app
 
 # Copy only necessary files from builder
-COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
+COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /app/ /app/
 
 # expose application port

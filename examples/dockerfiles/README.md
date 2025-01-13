@@ -25,13 +25,13 @@ DOCKER_BUILDKIT=1 docker build \
 
 ### 2. OpenShift SSH Dockerfile (`openshift-ssh.Dockerfile`)
 
-This Dockerfile is designed for OpenShift environments where BuildKit secrets might not be available. It uses build arguments to pass the SSH key.
+This Dockerfile is designed for OpenShift environments where BuildKit secrets might not be available. It uses a volume mount using Buildah to pass the SSH key.
 
 #### Key Features:
 - Similar multi-stage build structure
-- Uses build arguments for SSH key injection
+- Uses volume mount for SSH key injection
 - Suitable for OpenShift environments
-- Note: This approach is less secure as the SSH key could be visible in image history
+- Note: Both ssh key and known_hosts should be available during build time as readonly
 
 #### How to Build:
 ```bash
@@ -61,9 +61,7 @@ This will start the Python application and expose it on port 8080.
    - Most secure approach for handling SSH keys
 
 2. **OpenShift SSH Dockerfile**
-   - SSH key is passed as build argument
-   - Key might be visible in image history
-   - Less secure than BuildKit approach
+   - SSH key is passed asvolume mount
    - Should be used only when BuildKit secrets are not available
    - Consider using OpenShift's secrets management for production
 
