@@ -13,22 +13,21 @@ spec:
     {{- if not (empty .Values.buildConfig.sourceSecret) }}
     sourceSecret:
       name: {{ .Values.buildConfig.sourceSecret.name }}
-    secrets:
-      - secret:
-          name: {{ .Values.buildConfig.sourceSecret.name }}
-        destinationDir: ".ssh"
     {{- end }}
   strategy:
     type: {{ .Values.buildConfig.strategy }}
     dockerStrategy:
       dockerfilePath: {{ .Values.buildConfig.dockerfilePath }}
       {{- if not (empty .Values.buildConfig.sourceSecret) }}
-      env:
-        - name: SSH_PRIVATE_KEY
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.buildConfig.sourceSecret.name }}
-              key: ssh-privatekey
+      volumes:
+        - name: ssh-key-volume
+          mounts:
+            - destinationPath: /root/.ssh  # SSH keys will be available here
+          source:
+            type: Secret
+            secret:
+              secretName: {{ .Values.buildConfig.sourceSecret.name }}
+              defaultMode: 0600  # set permissions
       {{- end }}
   output:
     to:
