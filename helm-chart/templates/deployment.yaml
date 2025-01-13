@@ -40,18 +40,18 @@ spec:
       serviceAccountName: {{ include "openad-model.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if and .Values.aws .Values.aws.image }}
+      {{- if .Values.aws }}
       initContainers:
         - name: init-s3-sync
-          image: {{ .Values.aws.image | quote }}
+          image: "amazon/aws-cli"
           command: ["/bin/sh", "-c"]
           args:
             {{- range .Values.aws.args }}
             - {{ . | quote }}
             {{- end }}
-          # envFrom:
-          # - secretRef:
-          #     name: {{ .Values.aws.credentials | quote }}
+          envFrom:
+          - secretRef:
+              name: {{ .Values.aws.credentials | quote }}
           env:
             - name: AWS_DEFAULT_REGION
               value: {{ .Values.aws.region | quote }}

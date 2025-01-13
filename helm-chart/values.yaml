@@ -11,6 +11,7 @@ buildConfig:
   strategy: Docker
   dockerfilePath: Dockerfile
   sourceSecret: {}
+    # name: ssh-privatekey
 
 image:
   repository: <MODEL_NAME>-service
@@ -118,14 +119,17 @@ volumeMounts:
     mountPath: "/data"
 
 # init container config to download s3 resources
-aws: {}
+aws:
+  # args: # command to run in the init container. # download s3 resources from bucket ahead of time.
+  #   - ""
+  # credentials: 
+  # region: 
 
 nodeSelector: {}
 
-# tolerations:
+tolerations: []
 #   - key: "nvidia.com/gpu"
 #     effect: "NoSchedule"
 
-tolerations: []
 
 affinity: {}
