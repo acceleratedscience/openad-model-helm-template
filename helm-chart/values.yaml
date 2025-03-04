@@ -5,24 +5,27 @@
 replicaCount: 1
 
 buildConfig:
-  name: <MODEL_NAME>-build
-  gitUri: ""
-  gitRef: "main"
+  gitUri: ""  # URL of the git repository
+  gitRef: "main"  # Branch of the git repository
   strategy: Docker
-  dockerfilePath: Dockerfile
-  sourceSecret: {}
+  dockerfilePath: Dockerfile  # Path to the Dockerfile
+  sourceSecret: {}  # Secret containing the SSH keys
     # name: ssh-privatekey
 
 image:
-  repository: <MODEL_NAME>-service
   tag: "latest"
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   env:
     - HF_HOME: "/tmp/.cache/huggingface"  # Set the new variable
     - MPLCONFIGDIR: "/tmp/.config/matplotlib"
     - LOGGING_CONFIG_PATH: "/tmp/app.log"  # If you want to set a logging path
     - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
     - ENABLE_CACHE_RESULTS: "False"  # enable cache for inference results, enable only for deterministic models
+  envFrom: []  # List of Secrets or ConfigMaps to inject into the init container and main container
+  #   - secretRef:
+  #       name: aws-credentials
+  #   - configMapRef:
+  #       name: config-map-name
 
 nameOverride: ""
 fullnameOverride: ""
@@ -105,7 +108,7 @@ readinessProbe:
   failureThreshold: 5
 
 autoscaling:
-  enabled: true
+  enabled: false
   minReplicas: 1
   maxReplicas: 2
   targetCPUUtilizationPercentage: 80
@@ -121,8 +124,7 @@ volumeMounts:
 # init container config to download s3 resources
 aws:
   # args: # command to run in the init container. # download s3 resources from bucket ahead of time.
-  #   - ""
-  # credentials: 
+  #   - "aws sync s3://<bucket-name> /data"
   # region: 
 
 nodeSelector: {}

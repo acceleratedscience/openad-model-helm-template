@@ -1,10 +1,9 @@
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
-  name: {{ .Values.buildConfig.name }}
+  name: {{ include "openad-model.fullname" . }}
   labels:
     {{- include "openad-model.labels" . | nindent 4 }}
-    part-of: {{ .Release.Name }}
 spec:
   source:
     git:
@@ -32,4 +31,4 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      name: "{{ include "openad-model.fullname" . }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
