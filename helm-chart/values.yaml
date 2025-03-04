@@ -80,12 +80,12 @@ ingress:
 resources:
   limits:
     # nvidia.com/gpu: 1
-    cpu: 10000m  # 10 CPU cores
-    memory: "10Gi"
+    cpu: 2000m  # 2 CPU cores
+    memory: "8Gi"
   requests:
     # nvidia.com/gpu: 1
     cpu: 1000m   # 1 CPU cores (adjust if necessary)
-    memory: "3Gi"
+    memory: "2Gi"
 
 livenessProbe:
   httpGet:
