@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -e
 
 # check if yq is installed
 if ! command -v yq &> /dev/null
@@ -8,10 +10,10 @@ then
 fi
 
 # ask the user for the project name
-read -p "Enter the project name: " project_name
+read -p "Enter the project name: " project_name < /dev/tty
 
 # ask for the project namespace. default is openad-models
-read -p "Enter the project namespace (default: openad-models): " project_namespace
+read -p "Enter the project namespace (default: openad-models): " project_namespace < /dev/tty
 project_namespace=${project_namespace:-openad-models}  # set the default value
 
 # check if the project name is empty
