@@ -1,0 +1,12 @@
+releases:
+  - name: openad-model
+    namespace: openad-models
+    chart: ./helm-chart
+    # values:
+    #   - values.yaml  # override file values.yaml
+    # # override specific values in values.yaml
+    # set:
+    #   - name: fullnameOverride  # override the name of the app
+    #     value: 
+    #   - name: nameOverride  # override the name of the app
+    #     value: 
