@@ -7,6 +7,6 @@ metadata:
 spec:
   tags:
     - name: "{{ .Values.image.tag | default .Chart.AppVersion }}"
-      from: 
+      from:
         kind: ImageStreamTag
         name: "{{ include "openad-model.fullname" . }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
