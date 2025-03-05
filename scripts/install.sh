@@ -125,7 +125,7 @@ fi
 
 # Prepare directories
 mkdir -p $INSTALL_PATH/$project_name
-cp -r openad-model-helm-template/helm-chart/* $INSTALL_PATH/$project_name
+cp -r openad-model-helm-template/helm/* $INSTALL_PATH/$project_name
 # Add project name to helm chart
 yq -i ".name = \"$project_name\"" $INSTALL_PATH/$project_name/Chart.yaml
 # Update helmfile.yaml

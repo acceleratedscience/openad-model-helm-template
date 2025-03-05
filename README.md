@@ -27,7 +27,7 @@ curl -sSL https://raw.githubusercontent.com/acceleratedscience/openad-model-helm
 
 ### 2. Configuration
 
-1. Update the [values](./helm-chart/values.yaml) file with your configuration.
+1. Update the [values](./helm/values.yaml) file with your configuration.
 
 2. Optionally update the [helmfile](./helmfile.yaml)
 
@@ -45,7 +45,7 @@ Grant Access to the Builder Service Account for the Secret
 oc secrets link builder my-ssh-privatekey-name
 ```
 
-Update `buildConfig` with the `sourceSecret` in the [values](./helm-chart/values.yaml) configuration.
+Update `buildConfig` with the `sourceSecret` in the [values](./helm/values.yaml) configuration.
 ```yaml
 buildConfig:
   ...
