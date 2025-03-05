@@ -2,46 +2,36 @@
 
 This repo is made to serve as a bootstrap for OpenAD models that run inference on OpenShift. It implements many templates that can take a project and have it running on Openshift in minutes.
 
-## Install This Template
-In your project root directory run the following command:
+## Dependencies
+
+- [Helm](https://helm.sh/)
+- [Helmfile](https://github.com/helmfile/helmfile)
+- [`oc` cli tool](https://docs.openshift.com/container-platform/4.17/cli_reference/openshift_cli/getting-started-cli.html)
+- [yq](https://github.com/mikefarah/yq)
+
+Install all Helmfile dependencies:
+```bash
+helmfile init
+```
+
+## Setup
+
+### 1. Install This Template
+
+In your project root run the install wizard
+> check out the install script [here](./scripts/install.sh)
+
 ```shell
-git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git && \
-    mkdir helm-chart && \
-    cp -r openad-model-helm-template/helm-chart/* helm-chart && \
-    rm -rf openad-model-helm-template
+curl -sSL https://raw.githubusercontent.com/acceleratedscience/openad-model-helm-template/refs/heads/main/scripts/install.sh | bash
 ```
 
-## Configuration
-1. Update the [values.yaml](./helm-chart/values.yaml) file with your model configuration. Replace all instances of `<MODEL_NAME>` with a unique identifier for your model.
+### 2. Configuration
 
-2. Update the configuation as you see fit for your model deployment. This is just a baseline to get inference running.
+1. Update the [values](./helm-chart/values.yaml) file with your model own configuration.
 
+2. Update the [helmfile](./helmfile.yaml) with any non default configuration
 
-### Example
-```yaml
-buildConfig:
-  name: my-model-build
-  gitUri: "" # add github url here
-  gitRef: "main" # using main branch.
-  strategy: Docker
-  dockerfilePath: Dockerfile # path to by Dockefile. (root dir by default)
-  sourceSecret: {} # if using ssh for private repos enable this.
-
-image:
-  repository: my-model-service
-  tag: "latest"
-  pullPolicy: IfNotPresent
-  env:
-    - HF_HOME: "/tmp/.cache/huggingface"
-    - MPLCONFIGDIR: "/tmp/.config/matplotlib"
-    - LOGGING_CONFIG_PATH: "/tmp/app.log"
-    - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
-    - ENABLE_CACHE_RESULTS: "True"  # enable cache for inference results, enable only for deterministic models. (False by default.)
-```
-
-These changes should be enough to run a default OpenAD model.
-
-### SSH Example
+### 3. (Optional) Configure A Private Repo
 Create ssh key secret `my-ssh-privatekey-name` (create a unique name).
 
 ```shell
@@ -55,7 +45,7 @@ Grant Access to the Builder Service Account for the Secret
 oc secrets link builder my-ssh-privatekey-name
 ```
 
-Update `buildConfig` in the [values.yaml](./helm-chart/values.yaml) configuration.
+Update `buildConfig` with the `sourceSecret` in the [values](./helm-chart/values.yaml) configuration.
 ```yaml
 buildConfig:
   ...
@@ -66,12 +56,12 @@ buildConfig:
 ## Install the Helm Chart on Openshift
 Install the Helm Chart
 ```shell
-helm install <MODEL_NAME> ./helm-chart
+helmfile apply
 ```
 
-Start a new build
+Start a new build to have running deployment
 ```shell
-oc start-build <MODEL_NAME>-build
+oc start-build RELEASE_NAME
 ```
 
 ## Troubleshooting
