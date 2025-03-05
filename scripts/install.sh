@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 
+# Function to add colors
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+BLUE=$(tput setaf 4)
+BOLD=$(tput bold)
+RESET=$(tput sgr0)
+
+# Constants
 INSTALL_PATH="./charts"
 
+# Ensure script stops on error
 set -e
 
 # Validate dependencies
@@ -29,10 +38,10 @@ get_input() {
 
     while true; do
         if [ -n "$default" ]; then
-            read -p "$prompt [$default]: " input < /dev/tty
+            read -p "🔹 $prompt [$default]: " input < /dev/tty
             input=${input:-$default}
         else
-            read -p "$prompt: " input < /dev/tty
+            read -p "🔹 $prompt: " input < /dev/tty
         fi
 
         if [ -n "$input" ]; then
@@ -134,6 +143,7 @@ yq -i ".releases += [{\"name\": \"$project_name\", \"namespace\": \"$project_nam
 # Cleanup
 rm -rf openad-model-helm-template
 
-echo "  🎉 Project setup complete for $project_name"
-echo "  📝 Please update the 🛠️ values.yaml file in 📂 $INSTALL_PATH/$project_name before deploying the Helm chart"
-echo "  🚀 To deploy the Helm chart ⚓, run: 'helmfile -f $INSTALL_PATH/helmfile.yaml apply'"
+echo -e "\n   ${GREEN}🎉 Project setup complete for ${BOLD}$project_name${RESET}\n"
+echo "   Next steps:"
+echo -e "   ${YELLOW}📝 Update the values file: 🛠️ '$INSTALL_PATH/$project_name/values.yaml'${RESET}"
+echo -e "   ${BLUE}🚀 Deploy the Helm chart:  ⚓ ${BOLD}'helmfile -f $INSTALL_PATH/helmfile.yaml apply'${RESET}\n"
