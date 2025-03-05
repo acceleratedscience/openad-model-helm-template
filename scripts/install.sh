@@ -42,11 +42,11 @@ yq -i ".name = \"$project_name\"" openad-model-helm-template/helm-chart/Chart.ya
 # Update helmfile.yaml
 yq -i ".releases[].name = \"$project_name\"" openad-model-helm-template/helmfile.yaml
 yq -i ".releases[].namespace = \"$project_namespace\"" openad-model-helm-template/helmfile.yaml
-yq -i ".releases[].chart = ./\"$project_name\"" openad-model-helm-template/helmfile.yaml
+yq -i ".releases[].chart = \"./$project_name\"" openad-model-helm-template/helmfile.yaml
 
 # Prepare directories
 mkdir -p ./charts/$project_name
-cp -r openad-model-helm-template/helm-chart ./charts/$project_name
+cp -r openad-model-helm-template/helm-chart/* ./charts/$project_name
 cp openad-model-helm-template/helmfile.yaml ./charts/helmfile.yaml
 
 # Cleanup
