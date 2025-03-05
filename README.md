@@ -27,9 +27,9 @@ curl -sSL https://raw.githubusercontent.com/acceleratedscience/openad-model-helm
 
 ### 2. Configuration
 
-1. Update the [values](./helm-chart/values.yaml) file with your model own configuration.
+1. Update the [values](./helm-chart/values.yaml) file with your configuration.
 
-2. Update the [helmfile](./helmfile.yaml) with any non default configuration
+2. Optionally update the [helmfile](./helmfile.yaml)
 
 ### 3. (Optional) Configure A Private Repo
 Create ssh key secret `my-ssh-privatekey-name` (create a unique name).
