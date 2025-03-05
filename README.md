@@ -22,8 +22,12 @@ In your project root run the install wizard
 > check out the install script [here](./scripts/install.sh)
 
 ```shell
-curl -sSL https://raw.githubusercontent.com/acceleratedscience/openad-model-helm-template/refs/heads/main/scripts/install.sh | bash
+curl -sSL https://ibm.biz/BdG3Ab | bash
 ```
+
+<!-- ```shell
+curl -sSL https://raw.githubusercontent.com/acceleratedscience/openad-model-helm-template/refs/heads/main/scripts/install.sh | bash
+``` -->
 
 ### 2. Configuration
 
