@@ -7,8 +7,8 @@ metadata:
     {{- include "openad-model.labels" . | nindent 4 }}
 spec:
   tags:
-    - name: "{{ .Values.image.tag | default .Chart.AppVersion }}"
+    - name: "latest"
       from:
         kind: ImageStreamTag
-        name: "{{ include "openad-model.fullname" . }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        name: "{{ include "openad-model.fullname" . }}:latest"
 {{- end }}

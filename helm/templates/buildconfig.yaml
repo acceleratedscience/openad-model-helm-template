@@ -32,5 +32,5 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: "{{ include "openad-model.fullname" . }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      name: "{{ include "openad-model.fullname" . }}:latest"
 {{- end }}
