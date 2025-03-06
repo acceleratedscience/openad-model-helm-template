@@ -1,3 +1,4 @@
+{{- if eq .Values.deploymentType "build" }}
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
@@ -32,3 +33,4 @@ spec:
     to:
       kind: ImageStreamTag
       name: "{{ include "openad-model.fullname" . }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+{{- end }}
