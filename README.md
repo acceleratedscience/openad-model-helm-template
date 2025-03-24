@@ -60,7 +60,7 @@ buildConfig:
 ## Install the Helm Chart on Openshift
 Install the Helm Chart
 ```shell
-helmfile apply
+helmfile -f charts/helmfile.yaml apply
 ```
 
 Start a new build to have running deployment
