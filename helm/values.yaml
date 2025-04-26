@@ -124,8 +124,17 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 80
 
+storage:
+  create: false  # Set to true if you want to create a PersistentVolumeClaim
+  name: "s3-data-pvc"  # unique name for the storage
+  className: ""
+  accessMode: ReadWriteMany
+  size: 100Gi
+
 volumes:
   - name: s3-data-pvc
+    # persistentVolumeClaim:  # Uncomment to use a PVC
+    #   claimName: s3-data-pvc  # name of the PVC to use
 
 volumeMounts:
   - name: s3-data-pvc
