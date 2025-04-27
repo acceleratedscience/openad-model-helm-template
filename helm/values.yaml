@@ -16,7 +16,7 @@ buildConfig:
 
 # Repository settings (used when deploymentType: "repository")
 repository:
-  name: ""  # e.g., docker.io/myorg/myapp
+  name: ""  # Image name to pull, e.g., # e.g., docker.io/bitnami/nginx (turn off liveness probe and readiness probe for this test image)
   tag: "latest"  # Image tag to pull
   pullSecret: ""  # Optional: name of the pull secret for private repositories
 
@@ -124,8 +124,17 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 80
 
+storage:
+  create: false  # Set to true if you want to create a PersistentVolumeClaim
+  name: "s3-data-pvc"  # unique name for the storage
+  className: ""
+  accessMode: ReadWriteMany
+  size: 100Gi
+
 volumes:
   - name: s3-data-pvc
+    # persistentVolumeClaim:  # Uncomment to use a PVC
+    #   claimName: s3-data-pvc  # name of the PVC to use
 
 volumeMounts:
   - name: s3-data-pvc
@@ -133,9 +142,9 @@ volumeMounts:
 
 # init container config to download s3 resources
 aws:
+  # region: "us-east-1"  # AWS region
   # args: # command to run in the init container. # download s3 resources from bucket ahead of time.
-  #   - "aws sync s3://<bucket-name> /data"
-  # region: 
+  #   - "aws s3 sync s3://<bucket-name> /data"
 
 nodeSelector: {}
 

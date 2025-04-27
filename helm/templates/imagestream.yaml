@@ -1,4 +1,6 @@
-{{- if eq .Values.deploymentType "build" }}
+# {{- if eq .Values.deploymentType "build" }}
+# always create imagestream even if buildConfig is not used
+# ensures that images are not deleted if switching to repository
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
@@ -11,4 +13,4 @@ spec:
       from:
         kind: ImageStreamTag
         name: "{{ include "openad-model.fullname" . }}:latest"
-{{- end }}
+# {{- end }}
