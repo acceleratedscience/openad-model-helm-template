@@ -45,9 +45,7 @@ spec:
           image: "amazon/aws-cli"
           command: ["/bin/sh", "-c"]
           args:
-            {{- range .Values.aws.args }}
-            - {{ . | quote }}
-            {{- end }}
+            - {{ .Values.aws.args | join " && " | quote }}
           {{- if .Values.image.envFrom }}
           envFrom:
             {{- toYaml .Values.image.envFrom | nindent 12 }}
