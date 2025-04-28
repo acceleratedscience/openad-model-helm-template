@@ -32,5 +32,5 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: "{{ include "openad-model.fullname" . }}:latest"
+      name: '{{ include "openad-model.fullname" . }}:{{ .Values.buildConfig.gitRef | default "main" }}'
 {{- end }}

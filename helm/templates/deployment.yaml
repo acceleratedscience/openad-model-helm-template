@@ -11,7 +11,7 @@ metadata:
     app.openshift.io/vcs-uri: {{ .Values.buildConfig.gitUri }}
     app.openshift.io/vcs-ref: {{ .Values.buildConfig.gitRef }}
     app.openshift.io/builds: '{"kind":"BuildConfig","namespace":"{{ .Release.Namespace }}","name":"{{ include "openad-model.fullname" . }}"}'
-    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"{{ include "openad-model.fullname" . }}:latest","namespace":"{{ .Release.Namespace }}"},"fieldPath":"spec.template.spec.containers[?(@.name==\"{{ .Chart.Name }}\")].image","pause":"false"}]'
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"{{ include "openad-model.fullname" . }}:{{ .Values.buildConfig.gitRef | default "main" }}","namespace":"{{ .Release.Namespace }}"},"fieldPath":"spec.template.spec.containers[?(@.name==\"{{ .Chart.Name }}\")].image","pause":"false"}]'
     app.openshift.io/build-source: '{"type":"git","git":{"uri":"{{ .Values.buildConfig.gitUri }}","ref":"{{ .Values.buildConfig.gitRef }}"}}'
 spec:
   {{- if not .Values.autoscaling.enabled }}
@@ -64,7 +64,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           {{- if eq .Values.deploymentType "build" }}
           # Use BuildConfig image
-          image:  "image-registry.openshift-image-registry.svc:5000/{{ .Release.Namespace }}/{{ include "openad-model.fullname" . }}:latest"
+          image:  'image-registry.openshift-image-registry.svc:5000/{{ .Release.Namespace }}/{{ include "openad-model.fullname" . }}:{{ .Values.buildConfig.gitRef | default "main" }}'
           {{- else }}
            # Use external image
           image: "{{ .Values.repository.name }}:{{ .Values.repository.tag }}"
