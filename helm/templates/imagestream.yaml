@@ -12,5 +12,5 @@ spec:
     - name: "latest"
       from:
         kind: ImageStreamTag
-        name: '{{ include "openad-model.fullname" . }}:{{ .Values.buildConfig.gitRef | default "main" }}
+        name: '{{ include "openad-model.fullname" . }}:{{ .Values.buildConfig.gitRef | default "main" }}'
 # {{- end }}
