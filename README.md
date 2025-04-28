@@ -31,6 +31,9 @@ curl -sSL https://raw.githubusercontent.com/acceleratedscience/openad-model-helm
 
 ### 2. Configuration
 
+A few defaults have already been configured for serving models in openad but configure as you wish.
+
+
 1. Update the [values](./helm/values.yaml) file with your configuration.
 
 2. Optionally update the [helmfile](./helmfile.yaml)
@@ -56,6 +59,26 @@ buildConfig:
   sourceSecret:
     name: my-ssh-privatekey-name
 ```
+
+## Best Practices
+
+### Version Controlled Builds
+
+When choosing `build` as your `deploymentType` its best to use a tag for your deployment instead of `main` or some other branch so that you get consistent and unbroken builds for production.
+
+```yaml
+deploymentType: "build"
+
+buildConfig:
+  gitRef: "main"  # <-- avoid branch tagging
+```
+
+Instead appropriately tag a release of your code
+```yaml
+buildConfig:
+  gitRef: "v1.0.0"  # <-- good!
+```
+
 
 ## Install the Helm Chart on Openshift
 Install the Helm Chart
