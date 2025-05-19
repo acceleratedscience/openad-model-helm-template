@@ -10,6 +10,7 @@ spec:
     git:
       uri: {{ .Values.buildConfig.gitUri }}
       ref: {{ .Values.buildConfig.gitRef }}
+    contextDir: {{ .Values.buildConfig.contextDir | default "" }}
     {{- if not (empty .Values.buildConfig.sourceSecret) }}
     sourceSecret:
       name: {{ .Values.buildConfig.sourceSecret.name }}
