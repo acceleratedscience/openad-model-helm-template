@@ -9,6 +9,7 @@ deploymentType: "build"
 buildConfig:
   gitUri: ""  # URL of the git repository
   gitRef: "main"  # Branch of the git repository
+  contextDir: ""
   strategy: Docker
   dockerfilePath: Dockerfile  # Path to the Dockerfile
   sourceSecret: {}  # Secret containing the SSH keys
