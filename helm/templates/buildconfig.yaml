@@ -30,6 +30,11 @@ spec:
               secretName: {{ .Values.buildConfig.sourceSecret.name }}
               defaultMode: 0600  # set permissions
       {{- end }}
+  triggers:
+    - type: ConfigChange  # Trigger on configuration changes
+    - type: GitHub  # Trigger on GitHub events
+      github:
+        secret: {{ .Values.buildConfig.githubSecret | default "github-webhook-secret" }}
   output:
     to:
       kind: ImageStreamTag
