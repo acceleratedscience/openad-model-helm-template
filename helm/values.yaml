@@ -7,19 +7,20 @@ deploymentType: "build"
 
 # BuildConfig settings (used when deploymentType: "build")
 buildConfig:
-  gitUri: ""  # URL of the git repository
-  gitRef: "main"  # Branch of the git repository
+  gitUri: "" # URL of the git repository
+  gitRef: "main" # Branch of the git repository
   contextDir: ""
   strategy: Docker
-  dockerfilePath: Dockerfile  # Path to the Dockerfile
-  sourceSecret: {}  # Secret containing the SSH keys
+  dockerfilePath: Dockerfile # Path to the Dockerfile
+  sourceSecret:
+    {} # Secret containing the SSH keys
     # name: ssh-privatekey
 
 # Repository settings (used when deploymentType: "repository")
 repository:
-  name: ""  # Image name to pull, e.g., # e.g., docker.io/bitnami/nginx (turn off liveness probe and readiness probe for this test image)
-  tag: "latest"  # Image tag to pull
-  pullSecret: ""  # Optional: name of the pull secret for private repositories
+  name: "" # Image name to pull, e.g., # e.g., docker.io/bitnami/nginx (turn off liveness probe and readiness probe for this test image)
+  tag: "latest" # Image tag to pull
+  pullSecret: "" # Optional: name of the pull secret for private repositories
 
 # Image settings (common for both deployment types)
 image:
@@ -27,19 +28,19 @@ image:
   # For repository: will use repository.name:repository.tag
   pullPolicy: Always
   env:
-    - HF_HOME: "/tmp/.cache/huggingface"  # Set the new variable
+    - HF_HOME: "/tmp/.cache/huggingface" # Set the new variable
     - MPLCONFIGDIR: "/tmp/.config/matplotlib"
-    - LOGGING_CONFIG_PATH: "/tmp/app.log"  # If you want to set a logging path
-    - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
-    - ENABLE_CACHE_RESULTS: "False"  # enable cache for inference results, enable only for deterministic models
-  envFrom: []  # List of Secrets or ConfigMaps to inject into the init container and main container
+    - LOGGING_CONFIG_PATH: "/tmp/app.log" # If you want to set a logging path
+    - gt4sd_local_cache_path: "/data/.openad_models" # !important mount checkpoints to this Volume
+    - ENABLE_CACHE_RESULTS: "False" # enable cache for inference results, enable only for deterministic models
+  envFrom: [] # List of Secrets or ConfigMaps to inject into the init container and main container
   #   - secretRef:
   #       name: aws-credentials
   #   - configMapRef:
   #       name: config-map-name
 
-nameOverride: ""
-fullnameOverride: ""
+# nameOverride: ""  # DEPRECATED
+# fullnameOverride: "" # DEPRECATED
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -55,10 +56,12 @@ serviceAccount:
 podAnnotations: {}
 podLabels: {}
 
-podSecurityContext: {}
+podSecurityContext:
+  {}
   # fsGroup: 2000
 
-securityContext: {}
+securityContext:
+  {}
   # capabilities:
   #   drop:
   #   - ALL
@@ -70,12 +73,13 @@ service:
   type: ClusterIP
   # type: NodePort
   port: 80
-  targetPort: 8080  # Internal port of your application
+  targetPort: 8080 # Internal port of your application
 
 ingress:
   enabled: false
   className: ""
-  annotations: {}
+  annotations:
+    {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
@@ -91,11 +95,11 @@ ingress:
 resources:
   limits:
     # nvidia.com/gpu: 1
-    cpu: 2000m  # 2 CPU cores
+    cpu: 2000m # 2 CPU cores
     memory: "8Gi"
   requests:
     # nvidia.com/gpu: 1
-    cpu: 1000m   # 1 CPU cores (adjust if necessary)
+    cpu: 1000m # 1 CPU cores (adjust if necessary)
     memory: "2Gi"
 
 livenessProbe:
@@ -126,8 +130,8 @@ autoscaling:
   targetMemoryUtilizationPercentage: 80
 
 storage:
-  create: false  # Set to true if you want to create a PersistentVolumeClaim
-  name: "s3-data-pvc"  # unique name for the storage
+  create: false # Set to true if you want to create a PersistentVolumeClaim
+  name: "s3-data-pvc" # unique name for the storage
   className: ""
   accessMode: ReadWriteMany
   size: 100Gi
@@ -143,6 +147,7 @@ volumeMounts:
 
 # init container config to download s3 resources
 aws:
+  {}
   # region: "us-east-1"  # AWS region
   # args: # command to run in the init container. # download s3 resources from bucket ahead of time.
   #   - "aws s3 sync s3://<bucket-name> /data"
@@ -152,6 +157,5 @@ nodeSelector: {}
 tolerations: []
 #   - key: "nvidia.com/gpu"
 #     effect: "NoSchedule"
-
 
 affinity: {}
