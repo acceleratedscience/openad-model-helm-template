@@ -1,6 +1,6 @@
 # Dockerfile Examples
 
-This directory contains example Dockerfiles for building Python applications with SSH support for private dependencies. Each example demonstrates different approaches to handling SSH keys in Docker builds.
+This directory contains example Dockerfiles for building Python applications with support for private dependencies using SSH or Personal Access Tokens (PAT). Each example demonstrates different approaches to handling credentials in Docker builds.
 
 ## Examples Overview
 
@@ -42,6 +42,19 @@ docker build \
   -t myapp:latest .
 ```
 
+### 3. OpenShift PAT Dockerfile (`pat.Dockerfile`)
+
+This Dockerfile is optimized for OpenShift builds and uses a Github Personal Access Token (PAT) for authenticating with private repositories. It expects the PAT credentials to be injected as environment variables during the build process, which is typical in an OpenShift `BuildConfig` setup.
+
+#### Key Features:
+- Uses multi-stage build to keep the final image lean.
+- Authenticates with private git repositories using a Github PAT.
+- Credentials (`GITHUB_USERNAME` and `GITHUB_TOKEN`) are passed as environment variables.
+- Suitable for OpenShift environments where you prefer PAT-based authentication over SSH keys.
+
+#### How to Build:
+This Dockerfile is designed to be used within an OpenShift `BuildConfig`. The `BuildConfig` should be configured to pull a secret containing `username` and `password` keys and inject them as `GITHUB_USERNAME` and `GITHUB_TOKEN` environment variables. A local build is not the primary use case, as it would require securely managing and passing these credentials to the `docker build` command.
+
 ## Running the Containers
 
 Both containers can be run the same way after building:
@@ -65,6 +78,11 @@ This will start the Python application and expose it on port 8080.
    - Should be used only when BuildKit secrets are not available
    - Consider using OpenShift's secrets management for production
 
+3. **OpenShift PAT Dockerfile**
+   - Github PAT is passed as environment variables during the build.
+   - These variables are not persisted in the final image layers due to the multi-stage build.
+   - This method relies on the security of the OpenShift build environment and its secret management.
+
 ## Best Practices
 
 1. Always use multi-stage builds to minimize final image size
@@ -85,7 +103,7 @@ This will start the Python application and expose it on port 8080.
 Both Dockerfiles expect:
 - A Python application with a `main.py` file
 - Dependencies that can be installed via pip/uv
-- SSH key for accessing private repositories
+- SSH key or Personal Access Token (PAT) for accessing private repositories
 - Port 8080 available for the application
 
 Remember to replace or modify the default command (`CMD ["python", "main.py"]`) if your application uses a different entrypoint.

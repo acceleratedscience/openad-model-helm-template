@@ -39,6 +39,10 @@ A few defaults have already been configured for serving models in openad but con
 2. Optionally update the [helmfile](./helmfile.yaml)
 
 ### 3. (Optional) Configure A Private Repo
+
+There are two ways to configure a private repo: using an SSH key or a Personal Access Token (PAT). For detailed examples of Dockerfiles that handle these authentication methods, see the [Dockerfile Examples documentation](./examples/dockerfiles/README.md).
+
+#### Using SSH Key
 Create ssh key secret `my-ssh-privatekey-name` (create a unique name).
 
 ```shell
@@ -53,11 +57,36 @@ oc secrets link builder my-ssh-privatekey-name
 ```
 
 Update `buildConfig` with the `sourceSecret` in the [values](./helm/values.yaml) configuration.
+
+> check out an example Dockerfile [here](./examples/dockerfiles/openshift-ssh.Dockerfile)
 ```yaml
 buildConfig:
   ...
   sourceSecret:
+    type: ssh
     name: my-ssh-privatekey-name
+```
+
+#### Using Github Personal Access Token (PAT)
+Create auth secret `github-credentials` from github token.
+```bash
+oc create secret generic github-credentials \
+  --from-literal=username=__token__ \
+  --from-literal=password=<your-token> \
+  --type=kubernetes.io/basic-auth
+```
+
+Update `buildConfig` with the `sourceSecret` in the [values](./helm/values.yaml) configuration.
+
+> check out an example Dockerfile [here](./examples/dockerfiles/pat.Dockerfile)
+
+```yaml
+buildConfig:
+  strategy: Docker
+  dockerfilePath: openshift/Dockerfile.openshift
+  sourceSecret:  # Secret containing the credentials
+    type: pat    # "ssh" or "pat"
+    name: github-credentials
 ```
 
 ## Best Practices

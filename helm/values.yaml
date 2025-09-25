@@ -7,20 +7,20 @@ deploymentType: "build"
 
 # BuildConfig settings (used when deploymentType: "build")
 buildConfig:
-  gitUri: "" # URL of the git repository
-  gitRef: "main" # Branch of the git repository
+  gitUri: ""                  # URL of the git repository
+  gitRef: "main"              # Branch of the git repository
   contextDir: ""
   strategy: Docker
-  dockerfilePath: Dockerfile # Path to the Dockerfile
-  sourceSecret:
-    {} # Secret containing the SSH keys
-    # name: ssh-privatekey
+  dockerfilePath: Dockerfile  # Path to the Dockerfile
+  sourceSecret:               # Secret containing the SSH keys
+    type: "ssh"               # "ssh" or "pat (github personal access token)"
+    name: ""                  # Name of the secret
 
 # Repository settings (used when deploymentType: "repository")
 repository:
-  name: "" # Image name to pull, e.g., # e.g., docker.io/bitnami/nginx (turn off liveness probe and readiness probe for this test image)
-  tag: "latest" # Image tag to pull
-  pullSecret: "" # Optional: name of the pull secret for private repositories
+  name: ""                    # Image name to pull
+  tag: "latest"               # Image tag to pull
+  pullSecret: ""              # Optional: name of the pull secret for private repositories
 
 # Image settings (common for both deployment types)
 image:
@@ -28,19 +28,21 @@ image:
   # For repository: will use repository.name:repository.tag
   pullPolicy: Always
   env:
-    - HF_HOME: "/tmp/.cache/huggingface" # Set the new variable
+    # good defaults
+    - HF_HOME: "/tmp/.cache/huggingface"
     - MPLCONFIGDIR: "/tmp/.config/matplotlib"
-    - LOGGING_CONFIG_PATH: "/tmp/app.log" # If you want to set a logging path
-    - gt4sd_local_cache_path: "/data/.openad_models" # !important mount checkpoints to this Volume
-    - ENABLE_CACHE_RESULTS: "False" # enable cache for inference results, enable only for deterministic models
-  envFrom: [] # List of Secrets or ConfigMaps to inject into the init container and main container
+    - LOGGING_CONFIG_PATH: "/tmp/app.log"
+    - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
+    - ENABLE_CACHE_RESULTS: "False"                   # enable cache for inference results, enable only for deterministic models
+  # List of Secrets or ConfigMaps to inject into the init container and main containers as environment variables
+  envFrom: []
   #   - secretRef:
   #       name: aws-credentials
   #   - configMapRef:
   #       name: config-map-name
 
-# nameOverride: ""  # DEPRECATED
-# fullnameOverride: "" # DEPRECATED
+# nameOverride: ""      # DEPRECATED
+# fullnameOverride: ""  # DEPRECATED
 
 serviceAccount:
   # Specifies whether a service account should be created
