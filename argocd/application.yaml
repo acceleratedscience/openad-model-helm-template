@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-name-placeholder
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: 'git-repo-url-placeholder'
+    targetRevision: main
+    path: charts/
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: app-namespace-placeholder
+  syncPolicy:
+    automated: {}
+    # syncOptions:
+    #   - Prune=false
+  ignoreDifferences: # ignore differences in image tag to avoid constant out-of-sync status
+  - group: apps
+    kind: Deployment
+    name: app-name-placeholder
+    jqPathExpressions:
+    - '.spec.template.spec.containers[] | select(.name == "app-name-placeholder") | .image'

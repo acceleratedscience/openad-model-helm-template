@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Ensure script stops on error
+set -euo pipefail
+
 # Function to add colors
 GREEN=$(tput setaf 2)
 YELLOW=$(tput setaf 3)
@@ -9,9 +12,7 @@ RESET=$(tput sgr0)
 
 # Constants
 INSTALL_PATH="./charts"
-
-# Ensure script stops on error
-set -e
+SUCCESS=false
 
 # Validate dependencies
 command -v git >/dev/null 2>&1 || { echo >&2 "git is required but not installed. Aborting."; exit 1; }
@@ -23,7 +24,7 @@ validate_project_name() {
     
     # Optional: Add more validation if needed (e.g., must start with a letter)
     if [[ ! "$project_name" =~ ^[a-zA-Z][a-zA-Z0-9-]*$ ]]; then
-        echo "❌ Error: Project name must start with a letter and can only contain letters, numbers, and hyphens."
+        echo "❌ Error: Project name must start with a letter and can only contain letters, numbers, and hyphens." >&2
         return 1
     fi
     
@@ -33,7 +34,7 @@ validate_project_name() {
 # Function to get user input
 get_input() {
     local prompt="$1"
-    local default="$2"
+    local default="${2:-}"
     local input
 
     while true; do
@@ -48,9 +49,22 @@ get_input() {
             echo "$input"
             break
         else
-            echo "Input cannot be empty. Please try again."
+            echo "Input cannot be empty. Please try again." >&2
         fi
     done
+}
+
+# Function to confirm overwrite
+confirm_overwrite() {
+    if [ -d "$INSTALL_PATH" ] && [ -n "$(ls -A "$INSTALL_PATH" 2>/dev/null)" ]; then
+        echo "${YELLOW}Warning: The directory '$INSTALL_PATH' already exists and is not empty.${RESET}"
+        read -p "Continuing may overwrite shared configuration files. Do you want to proceed? [y/N]: " -n 1 -r REPLY < /dev/tty
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Operation cancelled."
+            exit 1
+        fi
+    fi
 }
 
 # Function to check if project already exists
@@ -64,7 +78,7 @@ check_project_exists() {
     
     # Check if the project directory exists
     if [ -d "$INSTALL_PATH/$project_name" ]; then
-        echo "❌ Error: A project with the name '$project_name' already exists."
+        echo "❌ Error: A project with the name '$project_name' already exists." >&2
         return 0
     fi
 
@@ -72,7 +86,7 @@ check_project_exists() {
     if [ -f "$INSTALL_PATH/helmfile.yaml" ]; then
         local existing_project=$(yq ".releases[].name" $INSTALL_PATH/helmfile.yaml 2>/dev/null | grep "^$project_name$")
         if [ -n "$existing_project" ]; then
-            echo "❌ Error: A project with the name '$project_name' is already configured in helmfile.yaml."
+            echo "❌ Error: A project with the name '$project_name' is already configured in helmfile.yaml." >&2
             return 0
         fi
     fi
@@ -87,9 +101,33 @@ ensure_releases_section() {
     # Check if releases section exists
     if ! yq '.releases' "$helmfile_path" > /dev/null 2>&1; then
         # Add releases section if it doesn't exist
-        yq '. += {"releases": []}' "$helmfile_path"
+        yq -i '. += {"releases": []}' "$helmfile_path"
     fi
 }
+
+# Create a temporary directory for the setup
+TEMP_DIR=$(mktemp -d)
+
+# Function to handle script cleanup
+cleanup_on_exit() {
+    # Always remove the temp directory
+    rm -rf "$TEMP_DIR"
+
+    if [ "$SUCCESS" = "true" ]; then
+        echo -e "\n   ${GREEN}🎉 Project setup complete for ${BOLD}$project_name${RESET}\n"
+        echo "   Next steps:"
+        echo -e "   ${YELLOW}📝 Update Chart Values${RESET}   --> $INSTALL_PATH/$project_name/values.yaml"
+        echo -e "   ${BLUE}🚀 Deploy The Helm Chart${RESET} --> helmfile -f $INSTALL_PATH/helmfile.yaml apply"
+        echo -e "   ${BLUE}🤖 Deploy With ArgoCD${RESET}    --> kubectl apply -f $INSTALL_PATH/argocd/application.yaml\n"
+    else
+        echo "An error occurred or script was interrupted"
+        echo "Cleanup finished."
+    fi
+}
+trap cleanup_on_exit EXIT
+
+# Prompt for overwrite if necessary
+confirm_overwrite
 
 # Get project details with validation
 while true; do
@@ -120,30 +158,57 @@ while true; do
     break
 done
 
-# Clone repository
-git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git > /dev/null 2>&1
+# Get git repo URL
+repo_url=$(get_input "Enter the Git repository URL" "$(git config --get remote.origin.url 2>/dev/null || echo '')")
 
-# check if charts directory exists
-if [ ! -f "$INSTALL_PATH/helmfile.yaml" ]; then
-    mkdir -p $INSTALL_PATH
-    # copy helmfile.yaml to charts directory
-    cp openad-model-helm-template/helmfile.yaml $INSTALL_PATH/helmfile.yaml
-    # Ensure releases section exists in helmfile.yaml
-    ensure_releases_section $INSTALL_PATH/helmfile.yaml
+# --- All operations will happen in the temp dir ---
+CLONE_DIR="$TEMP_DIR/openad-model-helm-template"
+TARGET_PROJECT_DIR="$TEMP_DIR/$project_name"
+TARGET_ARGOCD_DIR="$TEMP_DIR/argocd"
+TARGET_HELMFILE="$TEMP_DIR/helmfile.yaml"
+
+# Clone repository into temp dir
+git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git "$CLONE_DIR" > /dev/null 2>&1
+
+# Prepare directories in temp
+mkdir -p "$TARGET_PROJECT_DIR"
+cp -r "$CLONE_DIR/helm/"* "$TARGET_PROJECT_DIR"
+cp -r "$CLONE_DIR/argocd" "$TARGET_ARGOCD_DIR"
+
+# Handle helmfile.yaml in temp
+if [ -f "$INSTALL_PATH/helmfile.yaml" ]; then
+    cp "$INSTALL_PATH/helmfile.yaml" "$TARGET_HELMFILE"
+else
+    cp "$CLONE_DIR/helmfile.yaml" "$TARGET_HELMFILE"
+    ensure_releases_section "$TARGET_HELMFILE"
 fi
 
-# Prepare directories
-mkdir -p $INSTALL_PATH/$project_name
-cp -r openad-model-helm-template/helm/* $INSTALL_PATH/$project_name
-# Add project name to helm chart
-yq -i ".name = \"$project_name\"" $INSTALL_PATH/$project_name/Chart.yaml
-# Update helmfile.yaml
-yq -i ".releases += [{\"name\": \"$project_name\", \"namespace\": \"$project_namespace\", \"chart\": \"./$project_name\"}]" $INSTALL_PATH/helmfile.yaml
+# Modify files in temp
+yq -i ".name = \"$project_name\"" "$TARGET_PROJECT_DIR/Chart.yaml"
+yq -i ".releases += [{\"name\": \"$project_name\", \"namespace\": \"$project_namespace\", \"chart\": \"./$project_name\"}]" "$TARGET_HELMFILE"
+yq -i "
+    .metadata.name = \"$project_name\" |
+    .spec.destination.namespace = \"$project_namespace\" |
+    .spec.source.repoURL = \"$repo_url\" |
+    .spec.source.path = \"charts/$project_name\" |
+    .spec.ignoreDifferences[0].name = \"$project_name\" |
+    .spec.ignoreDifferences[0].jqPathExpressions[0] = \".spec.template.spec.containers[] | select(.name == \\\"$project_name\\\") | .image\"
+" "$TARGET_ARGOCD_DIR/application.yaml"
 
-# Cleanup
-rm -rf openad-model-helm-template
+# --- Commit phase: Move files to final destination ---
+mkdir -p "$INSTALL_PATH"
+# Use cp to handle overwriting existing directories gracefully
+cp -R "$TARGET_PROJECT_DIR" "$INSTALL_PATH/"
+# Handle argocd application file by appending
+mkdir -p "$INSTALL_PATH/argocd"
+if [ -f "$INSTALL_PATH/argocd/application.yaml" ] && [ -s "$INSTALL_PATH/argocd/application.yaml" ]; then
+    # Append to existing non-empty file
+    echo "---" >> "$INSTALL_PATH/argocd/application.yaml"
+    cat "$TARGET_ARGOCD_DIR/application.yaml" >> "$INSTALL_PATH/argocd/application.yaml"
+else
+    # Move the new file if destination is empty or doesn't exist
+    mv "$TARGET_ARGOCD_DIR/application.yaml" "$INSTALL_PATH/argocd/"
+fi
+cp -R "$TARGET_HELMFILE" "$INSTALL_PATH/"
 
-echo -e "\n   ${GREEN}🎉 Project setup complete for ${BOLD}$project_name${RESET}\n"
-echo "   Next steps:"
-echo -e "   ${YELLOW}📝 Update the values file: 🛠️ '$INSTALL_PATH/$project_name/values.yaml'${RESET}"
-echo -e "   ${BLUE}🚀 Deploy the Helm chart:  ⚓ ${BOLD}'helmfile -f $INSTALL_PATH/helmfile.yaml apply'${RESET}\n"
+SUCCESS=true

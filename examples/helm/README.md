@@ -4,51 +4,67 @@ This document describes the configurable values for the OpenAD Model Helm chart.
 
 ## Core Configuration
 
-### Replica Count
+### Deployment Type
 ```yaml
-replicaCount: 1
+# Choose deployment type: "build" or "repository"
+deploymentType: "build"
 ```
-Number of pod replicas to run. Adjust based on your scaling needs.
+Selects the deployment method.
+- `build`: Deploys from a Git repository using an OpenShift `BuildConfig`.
+- `repository`: Deploys a pre-built image from a container repository.
 
-### BuildConfig (OpenShift)
+### BuildConfig (for `deploymentType: "build"`)
 ```yaml
 buildConfig:
-  name: example-model-build
-  gitUri: "https://github.com/username/repo"
-  gitRef: "main"
+  triggerBuild:
+    enabled: true             # Enable or disable the build trigger Job for argocd
+  gitUri: ""                  # URL of the git repository
+  gitRef: "main"              # Branch of the git repository
+  contextDir: ""
   strategy: Docker
-  dockerfilePath: Dockerfile
-  sourceSecret: {}
+  dockerfilePath: Dockerfile  # Path to the Dockerfile
+  sourceSecret:               # Secret containing the SSH keys
+    type: "ssh"               # "ssh" or "pat (github personal access token)"
+    name: ""                  # Name of the secret
 ```
-- `name`: Name of the BuildConfig resource
-- `gitUri`: Git repository URL containing your model code
-- `gitRef`: Git branch, tag, or commit to build from
-- `strategy`: Build strategy (Docker or Source)
-- `dockerfilePath`: Path to the Dockerfile in your repository
-- `sourceSecret`: Git credentials if needed for private repositories
+- `triggerBuild.enabled`: If `true`, creates a Job to trigger a build. Useful for ArgoCD.
+- `gitUri`: Git repository URL containing your model code.
+- `gitRef`: Git branch, tag, or commit to build from.
+- `contextDir`: Sub-directory within the Git repository to use as the build context.
+- `strategy`: Build strategy (e.g., `Docker` or `Source`).
+- `dockerfilePath`: Path to the Dockerfile in your repository.
+- `sourceSecret`: Git credentials for private repositories.
+    - `type`: `ssh` or `pat` (Personal Access Token).
+    - `name`: The name of the Kubernetes secret holding the credentials.
+
+### Repository (for `deploymentType: "repository"`)
+```yaml
+repository:
+  name: ""                    # Image name to pull
+  tag: "latest"               # Image tag to pull
+  pullSecret: ""              # Optional: name of the pull secret for private repositories
+```
+- `name`: Name of your container image.
+- `tag`: Image tag to use.
+- `pullSecret`: Name of the image pull secret for private repositories.
 
 ### Image Configuration
 ```yaml
 image:
-  repository: example-model-service
-  tag: "latest"
-  pullPolicy: IfNotPresent
-  env:
-    - HF_HOME: "/tmp/.cache/huggingface"
-    - MPLCONFIGDIR: "/tmp/.config/matplotlib"
-    - LOGGING_CONFIG_PATH: "/tmp/app.log"
-    - gt4sd_local_cache_path: "/data/.openad_models"
-    - ENABLE_CACHE_RESULTS: "False"
+  pullPolicy: Always
+  env: null
+    # - HF_HOME: "/tmp/.cache/huggingface"
+    # - MPLCONFIGDIR: "/tmp/.config/matplotlib"
+    # - LOGGING_CONFIG_PATH: "/tmp/app.log"
+    # - gt4sd_local_cache_path: "/data/.openad_models"
+    # - ENABLE_CACHE_RESULTS: "False"
+  envFrom: []
+  #   - secretRef:
+  #       name: aws-credentials
 ```
-- `repository`: Name of your container image
-- `tag`: Image tag to use
-- `pullPolicy`: When to pull new images
-- `env`: Environment variables:
-  - `HF_HOME`: HuggingFace cache directory
-  - `MPLCONFIGDIR`: Matplotlib configuration directory
-  - `LOGGING_CONFIG_PATH`: Application log file path
-  - `gt4sd_local_cache_path`: OpenAD models cache path (important: mount checkpoints here)
-  - `ENABLE_CACHE_RESULTS`: Enable caching of inference results (for deterministic models only)
+- `pullPolicy`: When to pull new images.
+- `env`: Environment variables to set in the container. The example values are for the OpenAD wrapper.
+- `envFrom`: A list of secrets or configmaps to source environment variables from.
 
 ## Networking
 
@@ -59,9 +75,9 @@ service:
   port: 80
   targetPort: 8080
 ```
-- `type`: Service type (ClusterIP, NodePort, LoadBalancer)
-- `port`: External port for the service
-- `targetPort`: Container port the service forwards to
+- `type`: Service type (`ClusterIP`, `NodePort`, `LoadBalancer`).
+- `port`: External port for the service.
+- `targetPort`: Container port the service forwards to.
 
 ### Ingress Configuration
 ```yaml
@@ -84,18 +100,20 @@ Configure ingress if you need external access to your model service.
 ```yaml
 resources:
   limits:
-    cpu: 10000m
-    memory: "10Gi"
+    # nvidia.com/gpu: 1
+    cpu: 2000m
+    memory: "8Gi"
   requests:
+    # nvidia.com/gpu: 1
     cpu: 1000m
-    memory: "3Gi"
+    memory: "2Gi"
 ```
 Adjust CPU and memory based on your model's requirements. Uncomment `nvidia.com/gpu` settings if GPU support is needed.
 
 ### Autoscaling
 ```yaml
 autoscaling:
-  enabled: true
+  enabled: false
   minReplicas: 1
   maxReplicas: 2
   targetCPUUtilizationPercentage: 80
@@ -104,6 +122,17 @@ autoscaling:
 Configure Horizontal Pod Autoscaling (HPA) settings.
 
 ## Storage
+
+### Persistent Volume Claim
+```yaml
+storage:
+  create: false # Set to true if you want to create a PersistentVolumeClaim
+  name: "s3-data-pvc" # unique name for the storage
+  className: ""
+  accessMode: ReadWriteMany
+  size: 100Gi
+```
+Configuration to create a `PersistentVolumeClaim`.
 
 ### Volumes and Mounts
 ```yaml
@@ -114,7 +143,28 @@ volumeMounts:
   - name: s3-data-pvc
     mountPath: "/data"
 ```
-Configure persistent storage for your model data.
+Configure persistent storage for your model data. This example uses the PVC created by the `storage` section.
+
+### S3 Sync Sidecar
+```yaml
+s3sync:
+  enabled: false
+  image: "amazon/aws-cli"
+  region: "us-east-1"
+  syncInterval: "60"
+  targets:
+    - s3Uri: ""
+      localPath: ""
+      direction: "s3tolocal"
+```
+- `enabled`: If `true`, deploys a sidecar container to sync data between S3 and a local volume.
+- `image`: Container image for the sync container.
+- `region`: AWS region for the S3 bucket.
+- `syncInterval`: Sync interval in seconds.
+- `targets`: List of sync targets.
+    - `s3Uri`: The S3 URI to sync from/to.
+    - `localPath`: The local path on the volume to sync from/to.
+    - `direction`: Sync direction. Options: `s3tolocal` (default), `localtos3`, `twoway`.
 
 ## Health Checks
 
@@ -126,6 +176,9 @@ livenessProbe:
     port: 8081
   initialDelaySeconds: 10
   periodSeconds: 15
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
 
 readinessProbe:
   httpGet:
@@ -133,10 +186,20 @@ readinessProbe:
     port: 8080
   initialDelaySeconds: 10
   periodSeconds: 15
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 5
 ```
 Health check configuration to ensure your model service is running properly.
 
 ## Advanced Configuration
+
+### Pod Annotations and Labels
+```yaml
+podAnnotations: {}
+podLabels: {}
+```
+Add custom annotations and labels to the deployment's pods.
 
 ### Node Selection and Tolerations
 ```yaml
@@ -145,9 +208,9 @@ tolerations: []
 affinity: {}
 ```
 Configure pod scheduling preferences:
-- Use `nodeSelector` to run on specific nodes
-- Use `tolerations` for running on tainted nodes (e.g., GPU nodes)
-- Use `affinity` rules for advanced scheduling requirements
+- Use `nodeSelector` to run on specific nodes.
+- Use `tolerations` for running on tainted nodes (e.g., GPU nodes).
+- Use `affinity` rules for advanced scheduling requirements.
 
 ### Security Context
 ```yaml

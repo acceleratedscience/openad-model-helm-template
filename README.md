@@ -89,6 +89,12 @@ buildConfig:
     name: github-credentials
 ```
 
+## Storage
+
+This Helm chart can be configured to create a `PersistentVolumeClaim` (PVC) for storing data. Please refer to the `storage` section in `helm/values.yaml` for configuration options.
+
+**Important Note:** When you create a PVC with this chart, it will not be deleted when you uninstall the Helm release. This is to prevent accidental data loss. You must manually delete the PVC if you no longer need the data.
+
 ## Best Practices
 
 ### Version Controlled Builds

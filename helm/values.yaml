@@ -155,9 +155,10 @@ s3sync:
   image: "amazon/aws-cli"
   region: "us-east-1"         # AWS region
   syncInterval: "60"          # in seconds
-  targets:                    # direction options: "s3tolocal" (default), "localtos3", "twoway"
+  targets:
     - s3Uri: ""               # e.g., "s3://my-bucket/path/"
       localPath: ""           # "/data/.openad_models/..."
+      direction: "s3tolocal"  # direction options: "s3tolocal" (default), "localtos3", "twoway"
 
 nodeSelector: {}
 
