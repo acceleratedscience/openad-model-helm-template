@@ -1,5 +1,5 @@
 
-{{- if .Values.buildConfig.triggerBuild.enabled }}
+{{- if and (eq .Values.deploymentType "build") .Values.buildConfig.triggerBuild.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:

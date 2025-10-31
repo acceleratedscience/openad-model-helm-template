@@ -97,21 +97,24 @@ This Helm chart can be configured to create a `PersistentVolumeClaim` (PVC) for 
 
 ## Best Practices
 
-### Version Controlled Builds
+### Choosing a Git Reference (`gitRef`)
 
-When choosing `build` as your `deploymentType` its best to use a tag for your deployment instead of `main` or some other branch so that you get consistent and unbroken builds for production.
+When `deploymentType` is set to `build`, the `buildConfig.gitRef` determines which version of your code is built. The strategy you choose depends on your environment.
+
+#### For Production Environments
+It is strongly recommended to use Git tags (e.g., `v1.0.0`) for production builds. This ensures that your deployments are predictable, consistent, and tied to a specific, immutable version of your code.
 
 ```yaml
-deploymentType: "build"
-
 buildConfig:
-  gitRef: "main"  # <-- avoid branch tagging
+  gitRef: "v1.0.0"  # <-- Recommended for production
 ```
 
-Instead appropriately tag a release of your code
+#### For Development and CI/CD Environments
+Using a branch name (e.g., `main` or `develop`) is suitable for development or continuous integration workflows. This allows you to automatically build and deploy the latest code from a branch. This template includes an optional `trigger-build-job.yaml` that can be enabled in `values.yaml`. When used with ArgoCD, this job will automatically start a new build after every sync, which is ideal for tracking a branch.
+
 ```yaml
 buildConfig:
-  gitRef: "v1.0.0"  # <-- good!
+  gitRef: "main"  # <-- Suitable for development/CI
 ```
 
 
