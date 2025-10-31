@@ -115,7 +115,45 @@ buildConfig:
 ```
 
 
-## Install the Helm Chart on Openshift
+## ArgoCD Deployment
+
+This template can be used with ArgoCD to manage deployments.
+
+### 1. Prerequisites
+
+Before deploying with ArgoCD, you need to grant the necessary permissions.
+
+**Grant ArgoCD Permissions**
+
+The ArgoCD application controller needs permissions to manage resources in your target namespace (e.g., `openad-models`).
+
+```shell
+oc adm policy add-role-to-user edit \
+  -n openad-models \
+  system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller
+```
+
+**Grant Service Account Permissions**
+
+If your application includes jobs or builds that run under a service account (like the `default` service account), it may also need permissions.
+
+```shell
+oc adm policy add-role-to-user edit -n openad-models -z default
+```
+
+### 2. Deploy the Application
+
+After running the install wizard, an ArgoCD `Application` manifest will be created at `charts/argocd/application.yaml`.
+
+To deploy your application, apply this manifest to your cluster:
+
+```shell
+oc apply -f charts/argocd/application.yaml
+```
+
+ArgoCD will then pick up this application and deploy the Helm chart based on the configuration.
+
+## Manual Deployment with Helmfile
 Install the Helm Chart
 ```shell
 helmfile -f charts/helmfile.yaml apply
