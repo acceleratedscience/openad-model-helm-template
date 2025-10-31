@@ -7,6 +7,8 @@ deploymentType: "build"
 
 # BuildConfig settings (used when deploymentType: "build")
 buildConfig:
+  triggerBuild:
+    enabled: true            # Enable or disable the build trigger Job for argocd
   gitUri: ""                  # URL of the git repository
   gitRef: "main"              # Branch of the git repository
   contextDir: ""
@@ -27,13 +29,13 @@ image:
   # For buildConfig: automatically set to the buildConfig output
   # For repository: will use repository.name:repository.tag
   pullPolicy: Always
-  env:
-    # good defaults
-    - HF_HOME: "/tmp/.cache/huggingface"
-    - MPLCONFIGDIR: "/tmp/.config/matplotlib"
-    - LOGGING_CONFIG_PATH: "/tmp/app.log"
-    - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
-    - ENABLE_CACHE_RESULTS: "False"                   # enable cache for inference results, enable only for deterministic models
+  env: null
+    # uncoment for openad wrapper
+    # - HF_HOME: "/tmp/.cache/huggingface"
+    # - MPLCONFIGDIR: "/tmp/.config/matplotlib"
+    # - LOGGING_CONFIG_PATH: "/tmp/app.log"
+    # - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
+    # - ENABLE_CACHE_RESULTS: "False"                   # enable cache for inference results, enable only for deterministic models
   # List of Secrets or ConfigMaps to inject into the init container and main containers as environment variables
   envFrom: []
   #   - secretRef:
