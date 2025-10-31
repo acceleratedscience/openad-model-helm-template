@@ -8,7 +8,7 @@ deploymentType: "build"
 # BuildConfig settings (used when deploymentType: "build")
 buildConfig:
   triggerBuild:
-    enabled: true            # Enable or disable the build trigger Job for argocd
+    enabled: true             # Enable or disable the build trigger Job for argocd
   gitUri: ""                  # URL of the git repository
   gitRef: "main"              # Branch of the git repository
   contextDir: ""
@@ -149,12 +149,15 @@ volumeMounts:
   - name: s3-data-pvc
     mountPath: "/data"
 
-# init container config to download s3 resources
-aws:
-  {}
-  # region: "us-east-1"  # AWS region
-  # args: # command to run in the init container. # download s3 resources from bucket ahead of time.
-  #   - "aws s3 sync s3://<bucket-name> /data"
+# sidecar container config to continuously sync s3 resources
+s3sync:
+  enabled: false
+  image: "amazon/aws-cli"
+  region: "us-east-1"         # AWS region
+  syncInterval: "60"          # in seconds
+  targets:                    # direction options: "s3tolocal" (default), "localtos3", "twoway"
+    - s3Uri: ""               # e.g., "s3://my-bucket/path/"
+      localPath: ""           # "/data/.openad_models/..."
 
 nodeSelector: {}
 
