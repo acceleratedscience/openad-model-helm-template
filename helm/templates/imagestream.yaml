@@ -1,6 +1,6 @@
 # {{- if eq .Values.deploymentType "build" }}
 # always create imagestream even if buildConfig is not used
-# ensures that images are not deleted if switching to repository
+# ensures that images are not deleted if switching to image deployment later
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:

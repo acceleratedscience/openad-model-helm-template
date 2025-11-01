@@ -2,11 +2,13 @@
 
 replicaCount: 1
 
-# Choose deployment type: "build" or "repository"
+# Choose deployment type: "build" or "image"
 deploymentType: "build"
 
 # BuildConfig settings (used when deploymentType: "build")
 buildConfig:
+  triggerBuild:
+    enabled: true             # Enable or disable the build trigger Job for argocd
   gitUri: ""                  # URL of the git repository
   gitRef: "main"              # Branch of the git repository
   contextDir: ""
@@ -16,33 +18,30 @@ buildConfig:
     type: "ssh"               # "ssh" or "pat (github personal access token)"
     name: ""                  # Name of the secret
 
-# Repository settings (used when deploymentType: "repository")
-repository:
+# Image settings (used when deploymentType: "image")
+image:
   name: ""                    # Image name to pull
   tag: "latest"               # Image tag to pull
   pullSecret: ""              # Optional: name of the pull secret for private repositories
 
-# Image settings (common for both deployment types)
-image:
-  # For buildConfig: automatically set to the buildConfig output
-  # For repository: will use repository.name:repository.tag
+# application settings (common for both deployment types)
+application:
+  # For buildConfig: image is automatically set from the buildConfig output
+  # For image: will use image.name:image.tag
   pullPolicy: Always
-  env:
-    # good defaults
-    - HF_HOME: "/tmp/.cache/huggingface"
-    - MPLCONFIGDIR: "/tmp/.config/matplotlib"
-    - LOGGING_CONFIG_PATH: "/tmp/app.log"
-    - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
-    - ENABLE_CACHE_RESULTS: "False"                   # enable cache for inference results, enable only for deterministic models
+  env: null
+    # uncoment for openad wrapper
+    # - HF_HOME: "/tmp/.cache/huggingface"
+    # - MPLCONFIGDIR: "/tmp/.config/matplotlib"
+    # - LOGGING_CONFIG_PATH: "/tmp/app.log"
+    # - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
+    # - ENABLE_CACHE_RESULTS: "False"                   # enable cache for inference results, enable only for deterministic models
   # List of Secrets or ConfigMaps to inject into the init container and main containers as environment variables
   envFrom: []
   #   - secretRef:
   #       name: aws-credentials
   #   - configMapRef:
   #       name: config-map-name
-
-# nameOverride: ""      # DEPRECATED
-# fullnameOverride: ""  # DEPRECATED
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -147,12 +146,16 @@ volumeMounts:
   - name: s3-data-pvc
     mountPath: "/data"
 
-# init container config to download s3 resources
-aws:
-  {}
-  # region: "us-east-1"  # AWS region
-  # args: # command to run in the init container. # download s3 resources from bucket ahead of time.
-  #   - "aws s3 sync s3://<bucket-name> /data"
+# sidecar container config to continuously sync s3 resources
+s3sync:
+  enabled: false
+  image: "amazon/aws-cli"
+  region: "us-east-1"         # AWS region
+  syncInterval: "60"          # in seconds
+  targets:
+    - s3Uri: ""               # e.g., "s3://my-bucket/path/"
+      localPath: ""           # "/data/.openad_models/..."
+      direction: "s3tolocal"  # direction options: "s3tolocal" (default), "localtos3", "twoway"
 
 nodeSelector: {}
 

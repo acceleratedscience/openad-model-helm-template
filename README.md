@@ -1,4 +1,4 @@
-# Helm chart template for OpenAD models
+# Helm Chart Template
 
 This repo is made to serve as a bootstrap for OpenAD models that run inference on OpenShift. It implements many templates that can take a project and have it running on Openshift in minutes.
 
@@ -16,7 +16,7 @@ helmfile init
 
 ## Setup
 
-### 1. Install This Template
+### 1. Quick Install
 
 In your project root run the install wizard
 > check out the install script [here](./scripts/install.sh)
@@ -89,27 +89,74 @@ buildConfig:
     name: github-credentials
 ```
 
+## Storage
+
+This Helm chart can be configured to create a `PersistentVolumeClaim` (PVC) for storing data. Please refer to the `storage` section in `helm/values.yaml` for configuration options.
+
+**Important Note:** When you create a PVC with this chart, it will not be deleted when you uninstall the Helm release. This is to prevent accidental data loss. You must manually delete the PVC if you no longer need the data.
+
 ## Best Practices
 
-### Version Controlled Builds
+### Choosing a Git Reference (`gitRef`)
 
-When choosing `build` as your `deploymentType` its best to use a tag for your deployment instead of `main` or some other branch so that you get consistent and unbroken builds for production.
+When `deploymentType` is set to `build`, the `buildConfig.gitRef` determines which version of your code is built. The strategy you choose depends on your environment.
+
+#### For Production Environments
+It is strongly recommended to use Git tags (e.g., `v1.0.0`) for production builds. This ensures that your deployments are predictable, consistent, and tied to a specific, immutable version of your code.
 
 ```yaml
-deploymentType: "build"
-
 buildConfig:
-  gitRef: "main"  # <-- avoid branch tagging
+  gitRef: "v1.0.0"  # <-- Recommended for production
 ```
 
-Instead appropriately tag a release of your code
+#### For Development and CI/CD Environments
+Using a branch name (e.g., `main` or `develop`) is suitable for development or continuous integration workflows. This allows you to automatically build and deploy the latest code from a branch. This template includes an optional `trigger-build-job.yaml` that can be enabled in `values.yaml`. When used with ArgoCD, this job will automatically start a new build after every sync, which is ideal for tracking a branch.
+
 ```yaml
 buildConfig:
-  gitRef: "v1.0.0"  # <-- good!
+  gitRef: "main"  # <-- Suitable for development/CI
 ```
 
 
-## Install the Helm Chart on Openshift
+## ArgoCD Deployment
+
+This template can be used with ArgoCD to manage deployments.
+
+### 1. Prerequisites
+
+Before deploying with ArgoCD, you need to grant the necessary permissions.
+
+**Grant ArgoCD Permissions**
+
+The ArgoCD application controller needs permissions to manage resources in your target namespace (e.g., `openad-models`).
+
+```shell
+oc adm policy add-role-to-user edit \
+  -n openad-models \
+  system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller
+```
+
+**Grant Service Account Permissions**
+
+If your application includes jobs or builds that run under a service account (like the `default` service account), it may also need permissions.
+
+```shell
+oc adm policy add-role-to-user edit -n openad-models -z default
+```
+
+### 2. Deploy the Application
+
+After running the install wizard, an ArgoCD `Application` manifest will be created at `charts/argocd/application.yaml`.
+
+To deploy your application, apply this manifest to your cluster:
+
+```shell
+oc apply -f charts/argocd/application.yaml
+```
+
+ArgoCD will then pick up this application and deploy the Helm chart based on the configuration.
+
+## Manual Deployment with Helmfile
 Install the Helm Chart
 ```shell
 helmfile -f charts/helmfile.yaml apply

@@ -32,32 +32,13 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      # {{- with .Values.imagePullSecrets }}
-      # imagePullSecrets:
-      #   {{- toYaml . | nindent 8 }}
-      # {{- end }}
+      {{- with .Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ . }}
+      {{- end }}
       serviceAccountName: {{ include "openad-model.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.aws }}
-      initContainers:
-        - name: init-s3-sync
-          image: "amazon/aws-cli"
-          command: ["/bin/sh", "-c"]
-          args:
-            - {{ .Values.aws.args | join " && " | quote }}
-          {{- if .Values.image.envFrom }}
-          envFrom:
-            {{- toYaml .Values.image.envFrom | nindent 12 }}
-          {{- end }}
-          env:
-            - name: AWS_DEFAULT_REGION
-              value: {{ .Values.aws.region | quote }}
-          {{- if .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml .Values.volumeMounts | nindent 12 }}
-          {{- end }}
-      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -65,26 +46,22 @@ spec:
           {{- if eq .Values.deploymentType "build" }}
           # Use BuildConfig image
           image:  "image-registry.openshift-image-registry.svc:5000/{{ .Release.Namespace }}/{{ include "openad-model.fullname" . }}:latest"
-          {{- else }}
+          {{- else if eq .Values.deploymentType "image" }}
            # Use external image
-          image: "{{ .Values.repository.name }}:{{ .Values.repository.tag }}"
+          image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
           {{- end }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- with .Values.image.pullSecret }}
-          imagePullSecrets:
-            - name: {{ . }}
-          {{- end }}
+          imagePullPolicy: {{ .Values.application.pullPolicy }}
           # command: ["/bin/sh", "-c", "sleep infinity"]  # for debugging
           env:
-            {{- range .Values.image.env }}
+            {{- range .Values.application.env }}
             {{- range $key, $value := . }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
             {{- end }}
-          {{- if .Values.image.envFrom }}
+          {{- if .Values.application.envFrom }}
           envFrom:
-            {{- toYaml .Values.image.envFrom | nindent 12 }}
+            {{- toYaml .Values.application.envFrom | nindent 12 }}
           {{- end }}
           ports:
             - name: http
@@ -100,6 +77,38 @@ spec:
           volumeMounts:
             {{- toYaml .Values.volumeMounts | nindent 12 }}
           {{- end }}
+        {{- if .Values.s3sync.enabled }}
+        - name: s3-sync-sidecar
+          image: "{{ .Values.s3sync.image }}"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                {{- range .Values.s3sync.targets }}
+                {{- if or (not .direction) (eq .direction "s3tolocal") }}
+                aws s3 sync {{ .s3Uri }} {{ .localPath }} --region {{ $.Values.s3sync.region }};
+                {{- else if eq .direction "localtos3" }}
+                aws s3 sync {{ .localPath }} {{ .s3Uri }} --region {{ $.Values.s3sync.region }};
+                {{- else if eq .direction "twoway" }}
+                aws s3 sync {{ .s3Uri }} {{ .localPath }} --region {{ $.Values.s3sync.region }};
+                aws s3 sync {{ .localPath }} {{ .s3Uri }} --region {{ $.Values.s3sync.region }};
+                {{- end }}
+                {{- end }}
+                sleep {{ .Values.s3sync.syncInterval }};
+              done
+          {{- if .Values.application.envFrom }}
+          envFrom:
+            {{- toYaml .Values.application.envFrom | nindent 12 }}
+          {{- end }}
+          env:
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.s3sync.region | quote }}
+          {{- if .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
+          {{- end }}
+        {{- end }}
       {{- if and .Values.volumeMounts }}
       {{- if .Values.volumes }}
       volumes:
@@ -118,3 +127,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
