@@ -1,0 +1,159 @@
+diff --git a/helm/README.md b/helm/README.md
+index 308234a..b22661a 100644
+--- a/helm/README.md
++++ b/helm/README.md
+@@ -12,12 +12,12 @@ curl -sSL https://ibm.biz/BdG3Ab | bash
+ 
+ ### Deployment Type
+ ```yaml
+-# Choose deployment type: "build" or "repository"
++# Choose deployment type: "build" or "image"
+ deploymentType: "build"
+ ```
+ Selects the deployment method.
+ - `build`: Deploys from a Git repository using an OpenShift `BuildConfig`.
+-- `repository`: Deploys a pre-built image from a container repository.
++- `image`: Deploys a pre-built image from a container image registry.
+ 
+ ### BuildConfig (for `deploymentType: "build"`)
+ ```yaml
+@@ -43,9 +43,9 @@ buildConfig:
+     - `type`: `ssh` or `pat` (Personal Access Token).
+     - `name`: The name of the Kubernetes secret holding the credentials.
+ 
+-### Repository (for `deploymentType: "repository"`)
++### Image (for `deploymentType: "image"`)
+ ```yaml
+-repository:
++image:
+   name: ""                    # Image name to pull
+   tag: "latest"               # Image tag to pull
+   pullSecret: ""              # Optional: name of the pull secret for private repositories
+diff --git a/helm/templates/deployment.yaml b/helm/templates/deployment.yaml
+index c360d11..f54fa58 100644
+--- a/helm/templates/deployment.yaml
++++ b/helm/templates/deployment.yaml
+@@ -32,10 +32,10 @@ spec:
+         {{- toYaml . | nindent 8 }}
+         {{- end }}
+     spec:
+-      # {{- with .Values.imagePullSecrets }}
+-      # imagePullSecrets:
+-      #   {{- toYaml . | nindent 8 }}
+-      # {{- end }}
++      {{- with .Values.image.pullSecret }}
++      imagePullSecrets:
++        - name: {{ . }}
++      {{- end }}
+       serviceAccountName: {{ include "openad-model.serviceAccountName" . }}
+       securityContext:
+         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+@@ -46,26 +46,22 @@ spec:
+           {{- if eq .Values.deploymentType "build" }}
+           # Use BuildConfig image
+           image:  "image-registry.openshift-image-registry.svc:5000/{{ .Release.Namespace }}/{{ include "openad-model.fullname" . }}:latest"
+-          {{- else }}
++          {{- else if eq .Values.deploymentType "image" }}
+            # Use external image
+-          image: "{{ .Values.repository.name }}:{{ .Values.repository.tag }}"
+-          {{- end }}
+-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+-          {{- with .Values.image.pullSecret }}
+-          imagePullSecrets:
+-            - name: {{ . }}
++          image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
+           {{- end }}
++          imagePullPolicy: {{ .Values.application.pullPolicy }}
+           # command: ["/bin/sh", "-c", "sleep infinity"]  # for debugging
+           env:
+-            {{- range .Values.image.env }}
++            {{- range .Values.application.env }}
+             {{- range $key, $value := . }}
+             - name: {{ $key }}
+               value: {{ $value | quote }}
+             {{- end }}
+             {{- end }}
+-          {{- if .Values.image.envFrom }}
++          {{- if .Values.application.envFrom }}
+           envFrom:
+-            {{- toYaml .Values.image.envFrom | nindent 12 }}
++            {{- toYaml .Values.application.envFrom | nindent 12 }}
+           {{- end }}
+           ports:
+             - name: http
+@@ -101,9 +97,9 @@ spec:
+                 {{- end }}
+                 sleep {{ .Values.s3sync.syncInterval }};
+               done
+-          {{- if .Values.image.envFrom }}
++          {{- if .Values.application.envFrom }}
+           envFrom:
+-            {{- toYaml .Values.image.envFrom | nindent 12 }}
++            {{- toYaml .Values.application.envFrom | nindent 12 }}
+           {{- end }}
+           env:
+             - name: AWS_DEFAULT_REGION
+@@ -131,3 +127,4 @@ spec:
+       tolerations:
+         {{- toYaml . | nindent 8 }}
+       {{- end }}
++
+diff --git a/helm/templates/imagestream.yaml b/helm/templates/imagestream.yaml
+index 835f3fd..e914e45 100644
+--- a/helm/templates/imagestream.yaml
++++ b/helm/templates/imagestream.yaml
+@@ -1,6 +1,6 @@
+ # {{- if eq .Values.deploymentType "build" }}
+ # always create imagestream even if buildConfig is not used
+-# ensures that images are not deleted if switching to repository
++# ensures that images are not deleted if switching to image deployment later
+ apiVersion: image.openshift.io/v1
+ kind: ImageStream
+ metadata:
+diff --git a/helm/values.yaml b/helm/values.yaml
+index 9caccaf..8efa8d3 100644
+--- a/helm/values.yaml
++++ b/helm/values.yaml
+@@ -2,7 +2,7 @@
+ 
+ replicaCount: 1
+ 
+-# Choose deployment type: "build" or "repository"
++# Choose deployment type: "build" or "image"
+ deploymentType: "build"
+ 
+ # BuildConfig settings (used when deploymentType: "build")
+@@ -18,16 +18,14 @@ buildConfig:
+     type: "ssh"               # "ssh" or "pat (github personal access token)"
+     name: ""                  # Name of the secret
+ 
+-# Repository settings (used when deploymentType: "repository")
+-repository:
++# Image settings (used when deploymentType: "image")
++image:
+   name: ""                    # Image name to pull
+   tag: "latest"               # Image tag to pull
+   pullSecret: ""              # Optional: name of the pull secret for private repositories
+ 
+-# Image settings (common for both deployment types)
+-image:
+-  # For buildConfig: automatically set to the buildConfig output
+-  # For repository: will use repository.name:repository.tag
++# application settings (common for both deployment types)
++application:
+   pullPolicy: Always
+   env: null
+     # uncoment for openad wrapper
+@@ -43,9 +41,6 @@ image:
+   #   - configMapRef:
+   #       name: config-map-name
+ 
+-# nameOverride: ""      # DEPRECATED
+-# fullnameOverride: ""  # DEPRECATED
+-
+ serviceAccount:
+   # Specifies whether a service account should be created
+   create: false
+diff --git a/out.txt b/out.txt
+new file mode 100644
+index 0000000..e69de29

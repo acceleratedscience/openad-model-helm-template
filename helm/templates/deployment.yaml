@@ -32,10 +32,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      # {{- with .Values.imagePullSecrets }}
-      # imagePullSecrets:
-      #   {{- toYaml . | nindent 8 }}
-      # {{- end }}
+      {{- with .Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ . }}
+      {{- end }}
       serviceAccountName: {{ include "openad-model.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -46,26 +46,22 @@ spec:
           {{- if eq .Values.deploymentType "build" }}
           # Use BuildConfig image
           image:  "image-registry.openshift-image-registry.svc:5000/{{ .Release.Namespace }}/{{ include "openad-model.fullname" . }}:latest"
-          {{- else }}
+          {{- else if eq .Values.deploymentType "image" }}
            # Use external image
-          image: "{{ .Values.repository.name }}:{{ .Values.repository.tag }}"
+          image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
           {{- end }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- with .Values.image.pullSecret }}
-          imagePullSecrets:
-            - name: {{ . }}
-          {{- end }}
+          imagePullPolicy: {{ .Values.application.pullPolicy }}
           # command: ["/bin/sh", "-c", "sleep infinity"]  # for debugging
           env:
-            {{- range .Values.image.env }}
+            {{- range .Values.application.env }}
             {{- range $key, $value := . }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
             {{- end }}
-          {{- if .Values.image.envFrom }}
+          {{- if .Values.application.envFrom }}
           envFrom:
-            {{- toYaml .Values.image.envFrom | nindent 12 }}
+            {{- toYaml .Values.application.envFrom | nindent 12 }}
           {{- end }}
           ports:
             - name: http
@@ -101,9 +97,9 @@ spec:
                 {{- end }}
                 sleep {{ .Values.s3sync.syncInterval }};
               done
-          {{- if .Values.image.envFrom }}
+          {{- if .Values.application.envFrom }}
           envFrom:
-            {{- toYaml .Values.image.envFrom | nindent 12 }}
+            {{- toYaml .Values.application.envFrom | nindent 12 }}
           {{- end }}
           env:
             - name: AWS_DEFAULT_REGION
@@ -131,3 +127,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+

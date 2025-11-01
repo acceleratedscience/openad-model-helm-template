@@ -12,12 +12,12 @@ curl -sSL https://ibm.biz/BdG3Ab | bash
 
 ### Deployment Type
 ```yaml
-# Choose deployment type: "build" or "repository"
+# Choose deployment type: "build" or "image"
 deploymentType: "build"
 ```
 Selects the deployment method.
 - `build`: Deploys from a Git repository using an OpenShift `BuildConfig`.
-- `repository`: Deploys a pre-built image from a container repository.
+- `image`: Deploys a pre-built image from a container image registry.
 
 ### BuildConfig (for `deploymentType: "build"`)
 ```yaml
@@ -43,9 +43,9 @@ buildConfig:
     - `type`: `ssh` or `pat` (Personal Access Token).
     - `name`: The name of the Kubernetes secret holding the credentials.
 
-### Repository (for `deploymentType: "repository"`)
+### Image (for `deploymentType: "image"`)
 ```yaml
-repository:
+image:
   name: ""                    # Image name to pull
   tag: "latest"               # Image tag to pull
   pullSecret: ""              # Optional: name of the pull secret for private repositories
