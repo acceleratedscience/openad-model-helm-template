@@ -1,4 +1,4 @@
-# Helm chart template for OpenAD models
+# Helm Chart Template
 
 This repo is made to serve as a bootstrap for OpenAD models that run inference on OpenShift. It implements many templates that can take a project and have it running on Openshift in minutes.
 
@@ -16,7 +16,7 @@ helmfile init
 
 ## Setup
 
-### 1. Install This Template
+### 1. Quick Install
 
 In your project root run the install wizard
 > check out the install script [here](./scripts/install.sh)
