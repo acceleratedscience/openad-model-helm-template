@@ -22,9 +22,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY . .
 
 # In OpenShift Buildah SSH secret is volume mounted instead of BuildKit
-# Load the ssh key
-RUN eval "$(ssh-agent -s)" && ssh-add /root/.ssh/ssh-privatekey \
-    && uv pip install --no-cache .
+RUN eval "$(ssh-agent -s)" && \
+    ssh-add /root/.ssh/ssh-privatekey && \
+    GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" uv pip install --no-cache .
 
 # Final stage
 FROM python:3.10-slim

@@ -34,13 +34,9 @@ This Dockerfile is designed for OpenShift environments where BuildKit secrets mi
 - Note: Both ssh key and known_hosts should be available during build time as readonly
 
 #### How to Build:
-```bash
-# Build the image using build argument
-docker build \
-  --build-arg SSH_PRIVATE_KEY="$(cat $HOME/.ssh/id_rsa)" \
-  -f examples/dockerfiles/openshift-ssh.Dockerfile \
-  -t myapp:latest .
-```
+This Dockerfile is designed to be used within an OpenShift `BuildConfig`. The `BuildConfig` should be configured to use a secret containing your SSH private key. OpenShift will mount this secret into the build container at `/root/.ssh/ssh-privatekey`.
+
+A local build using `docker build` is not the primary use case for this file, as it relies on the OpenShift secret mounting mechanism.
 
 ### 3. OpenShift PAT Dockerfile (`pat.Dockerfile`)
 
@@ -74,9 +70,9 @@ This will start the Python application and expose it on port 8080.
    - Most secure approach for handling SSH keys
 
 2. **OpenShift SSH Dockerfile**
-   - SSH key is passed asvolume mount
-   - Should be used only when BuildKit secrets are not available
-   - Consider using OpenShift's secrets management for production
+   - The SSH key is made available to the build via a volume mount from an OpenShift secret.
+   - This method is more secure than using build arguments as the key is not part of the build command.
+   - It is designed for environments like OpenShift where BuildKit secret mounting may not be configured.
 
 3. **OpenShift PAT Dockerfile**
    - Github PAT is passed as environment variables during the build.
