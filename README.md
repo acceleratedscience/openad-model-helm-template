@@ -58,7 +58,7 @@ Grant Access to the Builder Service Account for the Secret
 oc secrets link builder my-ssh-privatekey-name
 ```
 
-Update `buildConfig` with the `sourceSecret` in the [values](./helm/values.yaml) configuration.
+Update the `buildConfig.sourceSecret.name` in your [values](./helm/values.yaml) file to match the name of the secret you just created (e.g., `my-ssh-privatekey-name`).
 
 > check out an example Dockerfile [here](./examples/dockerfiles/openshift-ssh.Dockerfile)
 ```yaml
@@ -78,7 +78,7 @@ oc create secret generic github-credentials \
   --type=kubernetes.io/basic-auth
 ```
 
-Update `buildConfig` with the `sourceSecret` in the [values](./helm/values.yaml) configuration.
+Update the `buildConfig.sourceSecret.name` in your [values](./helm/values.yaml) file to match the name of the secret you just created (e.g., `github-credentials`).
 
 > check out an example Dockerfile [here](./examples/dockerfiles/pat.Dockerfile)
 

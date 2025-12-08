@@ -34,7 +34,7 @@ This Dockerfile is designed for OpenShift environments where BuildKit secrets mi
 - Note: Both ssh key and known_hosts should be available during build time as readonly
 
 #### How to Build:
-This Dockerfile is designed to be used within an OpenShift `BuildConfig`. The `BuildConfig` should be configured to use a secret containing your SSH private key. OpenShift will mount this secret into the build container at `/root/.ssh/ssh-privatekey`.
+This Dockerfile is designed to be used within an OpenShift `BuildConfig`. The `BuildConfig` is configured via `values.yaml` to use a secret containing your SSH private key. For setup instructions, see the [main README.md](../../README.md#using-ssh-key). OpenShift will mount this secret into the build container at `/root/.ssh/ssh-privatekey`.
 
 A local build using `docker build` is not the primary use case for this file, as it relies on the OpenShift secret mounting mechanism.
 
@@ -49,7 +49,7 @@ This Dockerfile is optimized for OpenShift builds and uses a Github Personal Acc
 - Suitable for OpenShift environments where you prefer PAT-based authentication over SSH keys.
 
 #### How to Build:
-This Dockerfile is designed to be used within an OpenShift `BuildConfig`. The `BuildConfig` should be configured to pull a secret containing `username` and `password` keys and inject them as `GITHUB_USERNAME` and `GITHUB_TOKEN` environment variables. A local build is not the primary use case, as it would require securely managing and passing these credentials to the `docker build` command.
+This Dockerfile is designed to be used within an OpenShift `BuildConfig`. The `BuildConfig` is configured via `values.yaml` to pull a secret containing `username` and `password` keys and inject them as `GITHUB_USERNAME` and `GITHUB_TOKEN` environment variables. For setup instructions, see the [main README.md](../../README.md#using-github-personal-access-token-pat). A local build is not the primary use case, as it would require securely managing and passing these credentials to the `docker build` command.
 
 ## Running the Containers
 
