@@ -51,6 +51,8 @@ oc create secret generic my-ssh-privatekey-name \
   --type=kubernetes.io/ssh-auth
 ```
 
+This secret will be mounted into the build container at `/root/.ssh/ssh-privatekey`.
+
 Grant Access to the Builder Service Account for the Secret
 ```shell
 oc secrets link builder my-ssh-privatekey-name
@@ -170,6 +172,6 @@ oc start-build RELEASE_NAME
 ## Troubleshooting
 
 ### SSH build fails
-When building on OpenShift, passing SSH keys to the build process requires a different approach than local Docker builds. Instead of using build arguments, OpenShift mounts the SSH key from a secret directly into the build container.
+When building on OpenShift, passing SSH keys to the build process requires a different approach than local Docker builds. Instead of using build arguments, OpenShift mounts the SSH key from a secret directly into the build container at `/root/.ssh/ssh-privatekey`.
 
 For a working example of how to handle this, please refer to the [`openshift-ssh.Dockerfile`](./examples/dockerfiles/openshift-ssh.Dockerfile). This example shows how to add the mounted SSH key to the ssh-agent, allowing you to securely clone private repositories during the build.
