@@ -9,6 +9,8 @@ spec:
     repoURL: 'git-repo-url-placeholder'
     targetRevision: main
     path: charts/
+    helm:
+      releaseName: app-name-placeholder
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: app-namespace-placeholder

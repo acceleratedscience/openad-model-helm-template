@@ -1,5 +1,4 @@
-
-{{- if and (eq .Values.deploymentType "build") .Values.buildConfig.triggerBuild.enabled }}
+{{- if .Values.buildConfig.triggerBuild.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -10,6 +9,8 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/sync-wave: "5"
+    openad.io/git-ref: {{ .Values.buildConfig.gitRef | quote }}
 spec:
   template:
     spec:
@@ -21,6 +22,69 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              echo "Triggering build for {{ .Release.Name }}..."
-              oc start-build {{ .Release.Name }} -n {{ .Release.Namespace }} --wait
+              set -e
+
+              {{- if (eq .Values.buildConfig.triggerBuild.type "gitRefChange") }}
+              LAST_REF=$(kubectl get configmap {{ .Release.Name }}-last-build -n {{ .Release.Namespace }} -o jsonpath='{.data.gitRef}' 2>/dev/null || echo "")
+
+              echo "Current gitRef: {{ .Values.buildConfig.gitRef }}"
+              echo "Last built gitRef: $LAST_REF"
+
+              if [ "$LAST_REF" = "{{ .Values.buildConfig.gitRef }}" ]; then
+                echo "gitRef unchanged. Skipping build."
+                exit 0
+              fi
+              {{- end }}
+
+              echo "Triggering build for {{ .Release.Name }} using gitRef {{ .Values.buildConfig.gitRef }}..."
+              oc start-build {{ .Release.Name }} -n {{ .Release.Namespace }} --follow --wait
+
+              # Update ConfigMap with new gitRef
+              kubectl create configmap {{ .Release.Name }}-last-build \
+                -n {{ .Release.Namespace }} \
+                --from-literal=gitRef={{ .Values.buildConfig.gitRef }} \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+              {{- if .Values.buildConfig.triggerBuild.forceReplace }}
+              echo "Checking for pending pods due to full GPUs..."
+              sleep 3
+              PENDING=$(kubectl get pods -n {{ .Release.Namespace }} \
+                -l app.kubernetes.io/name={{ .Release.Name }} \
+                --field-selector=status.phase=Pending \
+                -o jsonpath='{.items[*].metadata.name}')
+
+              if [ ! -z "$PENDING" ]; then
+                echo "Pending pod detected: $PENDING"
+
+                OLDEST_POD=$(kubectl get pods -n {{ .Release.Namespace }} \
+                  -l app.kubernetes.io/name={{ .Release.Name }} \
+                  --field-selector=status.phase=Running \
+                  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{"\n"}{end}' \
+                  | sort -k2 \
+                  | head -n1 \
+                  | awk '{print $1}')
+
+                if [ ! -z "$OLDEST_POD" ]; then
+                  echo "Deleting oldest pod: $OLDEST_POD to free GPU..."
+                  kubectl delete pod "$OLDEST_POD" -n {{ .Release.Namespace }}
+                  echo "Oldest pod deleted. Kubernetes should now schedule the new pod."
+                else
+                  echo "No running pod found to delete."
+                fi
+
+                echo "Waiting for pending pod to become Running..."
+                for i in $(seq 1 60); do
+                  STATUS=$(kubectl get pod $PENDING -n {{ .Release.Namespace }} \
+                    -o jsonpath='{.items[?(@.status.phase=="Pending")].metadata.name}' 2>/dev/null)
+                  if [ -z "$STATUS" ]; then
+                    echo "Pod is now scheduled."
+                    break
+                  fi
+                  echo "Still pending... waiting 5s"
+                  sleep 5
+                done
+              else
+                echo "No pending pods, no need to delete old pods."
+              fi
+              {{- end }}
 {{- end }}

@@ -31,10 +31,21 @@ validate_project_name() {
     return 0
 }
 
+# Function to validate port number
+validate_port() {
+    local port="$1"
+    if [[ ! "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        echo "❌ Error: Port must be a number between 1 and 65535." >&2
+        return 1
+    fi
+    return 0
+}
+
 # Function to get user input
 get_input() {
     local prompt="$1"
     local default="${2:-}"
+    local allow_empty="${3:-false}"
     local input
 
     while true; do
@@ -47,6 +58,9 @@ get_input() {
 
         if [ -n "$input" ]; then
             echo "$input"
+            break
+        elif [ "$allow_empty" = true ]; then
+            echo ""
             break
         else
             echo "Input cannot be empty. Please try again." >&2
@@ -159,7 +173,23 @@ while true; do
 done
 
 # Get git repo URL
-repo_url=$(get_input "Enter the Git repository URL" "$(git config --get remote.origin.url 2>/dev/null || echo '')")
+repo_url=$(get_input "Enter the git repository URL" "$(git config --get remote.origin.url 2>/dev/null || echo '')")
+
+# Get application port with validation
+while true; do
+    application_port=$(get_input "Enter the application port" "8080")
+    if validate_port "$application_port"; then
+        break
+    fi
+done
+
+# Get liveness port with validation
+while true; do
+    liveness_port=$(get_input "Enter the liveness probe port (optional, empty to disable)" "" true)
+    if [ -z "$liveness_port" ] || validate_port "$liveness_port"; then
+        break
+    fi
+done
 
 # --- All operations will happen in the temp dir ---
 CLONE_DIR="$TEMP_DIR/openad-model-helm-template"
@@ -185,12 +215,23 @@ fi
 
 # Modify files in temp
 yq -i ".name = \"$project_name\"" "$TARGET_PROJECT_DIR/Chart.yaml"
+yq -i ".buildConfig.gitUri = \"$repo_url\"" "$TARGET_PROJECT_DIR/values.yaml"
+yq -i ".service.targetPort = $application_port" "$TARGET_PROJECT_DIR/values.yaml"
+yq -i ".readinessProbe.httpGet.port = $application_port" "$TARGET_PROJECT_DIR/values.yaml"
+
+if [ -n "$liveness_port" ]; then
+    yq -i ".livenessProbe.httpGet.port = $liveness_port" "$TARGET_PROJECT_DIR/values.yaml"
+else
+    yq -i ".livenessProbe = null" "$TARGET_PROJECT_DIR/values.yaml"
+fi
+
 yq -i ".releases += [{\"name\": \"$project_name\", \"namespace\": \"$project_namespace\", \"chart\": \"./$project_name\"}]" "$TARGET_HELMFILE"
 yq -i "
     .metadata.name = \"$project_name\" |
     .spec.destination.namespace = \"$project_namespace\" |
     .spec.source.repoURL = \"$repo_url\" |
     .spec.source.path = \"charts/$project_name\" |
+    .spec.source.helm.releaseName = \"$project_name\" |
     .spec.ignoreDifferences[0].name = \"$project_name\" |
     .spec.ignoreDifferences[0].jqPathExpressions[0] = \".spec.template.spec.containers[] | select(.name == \\\"$project_name\\\") | .image\"
 " "$TARGET_ARGOCD_DIR/application.yaml"

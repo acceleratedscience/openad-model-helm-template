@@ -1,6 +1,6 @@
-# Helm Chart Template
+# Helm Chart Template for AISUITE
 
-This repo is made to serve as a bootstrap for OpenAD models that run inference on OpenShift. It implements many templates that can take a project and have it running on Openshift in minutes.
+This repository provides a Helm chart template to bootstrap AI/ML model deployment on OpenShift, with a focus on integrating with [AISUITE](https://open.accelerate.science/). It implements many templates that can take a project and have it running on Openshift in minutes.
 
 ## Dependencies
 
@@ -31,7 +31,7 @@ curl -sSL https://raw.githubusercontent.com/acceleratedscience/openad-model-helm
 
 ### 2. Configuration
 
-A few defaults have already been configured for serving models in openad but configure as you wish.
+A few defaults have already been configured for serving models in AISUITE but configure as you wish.
 
 
 1. Update the [values](./helm/values.yaml) file with your configuration.
@@ -112,7 +112,11 @@ buildConfig:
 ```
 
 #### For Development and CI/CD Environments
-Using a branch name (e.g., `main` or `develop`) is suitable for development or continuous integration workflows. This allows you to automatically build and deploy the latest code from a branch. This template includes an optional `trigger-build-job.yaml` that can be enabled in `values.yaml`. When used with ArgoCD, this job will automatically start a new build after every sync, which is ideal for tracking a branch.
+Using a branch name (e.g., `main` or `develop`) is suitable for development or continuous integration workflows. This template includes a job to trigger new builds that can be configured in `values.yaml` via `buildConfig.triggerBuild`.
+
+The `type` field controls the behavior:
+- **`gitRefChange` (Default):** A new build is triggered only when the `gitRef` value (e.g., a tag or commit SHA) is updated in your configuration and synced by ArgoCD. This is ideal for controlled, version-based deployments.
+- **`always`:** A new build is triggered on *every* ArgoCD sync, regardless of whether the `gitRef` has changed. This is useful for development workflows where you want to continuously deploy the latest commit from a specific branch.
 
 ```yaml
 buildConfig:

@@ -1,34 +1,70 @@
-# Declare variables to be passed into your templates.
+# Helm chart configuration values
+# This file contains the default values for your Helm chart.
+# You can override these values in a custom values.yaml file or via the --set flag.
 
+# -- Number of pod replicas to deploy.
 replicaCount: 1
 
-# Choose deployment type: "build" or "image"
+# -- Defines the deployment strategy.
+# Can be either "build" (to build from a Git source) or "image" (to pull a pre-built image).
 deploymentType: "build"
 
-# BuildConfig settings (used when deploymentType: "build")
+# ==============================================================================
+# BuildConfig Settings (for deploymentType: "build")
+# ==============================================================================
+# -- Configures the OpenShift BuildConfig to build a container image from a Git repository.
 buildConfig:
+  # -- Configuration for triggering automated builds.
   triggerBuild:
-    enabled: true             # Enable or disable the build trigger Job for argocd
-  gitUri: ""                  # URL of the git repository
-  gitRef: "main"              # Branch of the git repository
+    # -- If true, a build is automatically triggered when changes are pushed to the repository.
+    enabled: true
+    # -- Trigger condition: "gitRefChange" (on ref tag changes) or "always" (on any ArgoCD sync).
+    type: "gitRefChange"
+    # -- If true, forcefully replaces any pending build pods with a new one.
+    forceReplace: false
+
+  # -- The URI of the Git repository (e.g., "https://github.com/user/repo.git").
+  gitUri: ""
+  # -- The Git branch, tag, or commit to build from. recommended to use a tag for reproducible builds.
+  gitRef: "main"
+  # -- The subdirectory within the Git repository to use as the build context.
   contextDir: ""
+  # -- The build strategy to use. Defaults to "Docker".
   strategy: Docker
-  dockerfilePath: Dockerfile  # Path to the Dockerfile
-  sourceSecret:               # Secret containing the SSH keys
-    type: "ssh"               # "ssh" or "pat (github personal access token)"
-    name: ""                  # Name of the secret
+  # -- The path to the Dockerfile within the repository.
+  dockerfilePath: Dockerfile
 
-# Image settings (used when deploymentType: "image")
+  # -- Credentials for accessing a private Git repository.
+  sourceSecret:
+    # -- The type of secret: "ssh" (for SSH keys) or "pat" (for GitHub Personal Access Tokens).
+    type: "ssh"
+    # -- The name of the Kubernetes secret containing the credentials.
+    name: ""
+
+# ==============================================================================
+# Image Settings (for deploymentType: "image")
+# ==============================================================================
+# -- Configures the image to be pulled from a container registry.
 image:
-  name: ""                    # Image name to pull
-  tag: "latest"               # Image tag to pull
-  pullSecret: ""              # Optional: name of the pull secret for private repositories
+  # -- The name of the container image to pull (e.g., "nginx").
+  name: ""
+  # -- The tag of the image to pull (e.g., "1.21.6").
+  tag: "latest"
+  # -- The name of the Kubernetes secret required to pull from a private registry.
+  pullSecret: ""
 
-# application settings (common for both deployment types)
+# ==============================================================================
+# Application Settings (common to both deployment types)
+# ==============================================================================
+# -- General application container settings.
 application:
-  # For buildConfig: image is automatically set from the buildConfig output
-  # For image: will use image.name:image.tag
+  # -- The image pull policy. Recommended: "Always" for tags like 'latest', "IfNotPresent" for specific versions.
   pullPolicy: Always
+  # -- Environment variables to inject into the application container.
+  # Example:
+  # env:
+  #   - name: "DATABASE_HOST"
+  #     value: "db.example.com"
   env: null
     # uncoment for openad wrapper
     # - HF_HOME: "/tmp/.cache/huggingface"
@@ -36,31 +72,38 @@ application:
     # - LOGGING_CONFIG_PATH: "/tmp/app.log"
     # - gt4sd_local_cache_path: "/data/.openad_models"  # !important mount checkpoints to this Volume
     # - ENABLE_CACHE_RESULTS: "False"                   # enable cache for inference results, enable only for deterministic models
-  # List of Secrets or ConfigMaps to inject into the init container and main containers as environment variables
+
+  # -- A list of Secrets or ConfigMaps to inject all their key-value pairs as environment variables.
   envFrom: []
   #   - secretRef:
   #       name: aws-credentials
   #   - configMapRef:
   #       name: config-map-name
 
+# ==============================================================================
+# Service Account
+# ==============================================================================
+# -- Configuration for the Kubernetes ServiceAccount.
 serviceAccount:
-  # Specifies whether a service account should be created
+  # -- If true, a ServiceAccount will be created.
   create: false
-  # Automatically mount a ServiceAccount's API credentials?
+  # -- If true, the ServiceAccount's API credentials will be automatically mounted into the pod.
   automount: true
-  # Annotations to add to the service account
+  # -- Annotations to add to the ServiceAccount.
   annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
+  # -- The name of the ServiceAccount to use. If not set and create is true, a name is generated.
   name: ""
 
+# -- Custom annotations and labels to add to the application pods.
 podAnnotations: {}
 podLabels: {}
 
+# -- Security context for the entire pod.
 podSecurityContext:
   {}
   # fsGroup: 2000
 
+# -- Security context for the application container.
 securityContext:
   {}
   # capabilities:
@@ -70,97 +113,156 @@ securityContext:
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# ==============================================================================
+# Service and Ingress
+# ==============================================================================
+# -- Configuration for the Kubernetes Service, which exposes the application.
 service:
+  # -- The type of service: ClusterIP, NodePort, LoadBalancer, or ExternalName.
   type: ClusterIP
-  # type: NodePort
+  # -- The port the service will expose.
   port: 80
-  targetPort: 8080 # Internal port of your application
+  # -- The internal port of your application container that the service will target.
+  targetPort: 8080
 
+# -- Configuration for the Kubernetes Ingress, which manages external access.
 ingress:
+  # -- If true, an Ingress resource will be created.
   enabled: false
+  # -- The class of the Ingress controller to use.
   className: ""
+  # -- Annotations for the Ingress resource (e.g., for cert-manager or specific ingress controllers).
   annotations:
     {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
+  # -- Host configuration for the Ingress.
   hosts:
     - host: chart-example.local
       paths:
         - path: /
           pathType: ImplementationSpecific
+  # -- TLS configuration for the Ingress.
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
 
+# ==============================================================================
+# Resource Management
+# ==============================================================================
+# -- CPU and memory resource requests and limits for the application container.
 resources:
+  # -- Maximum resources the container can consume.
   limits:
     # nvidia.com/gpu: 1
-    cpu: 2000m # 2 CPU cores
-    memory: "8Gi"
+    cpu: 2000m
+    memory: "2Gi"
+  # -- Minimum resources the container is guaranteed to have.
   requests:
     # nvidia.com/gpu: 1
-    cpu: 1000m # 1 CPU cores (adjust if necessary)
-    memory: "2Gi"
+    cpu: 1000m
+    memory: "1Gi"
 
+# ==============================================================================
+# Health Checks
+# ==============================================================================
+# -- Liveness probe to check if the application is running. If it fails, the container is restarted.
+# -- Set to null to disable.
 livenessProbe:
   httpGet:
     path: /health
-    port: 8081
+    port: 8081 # A separate port for liveness, distinct from the main application port.
   initialDelaySeconds: 10
   periodSeconds: 15
   timeoutSeconds: 10
   successThreshold: 1
   failureThreshold: 3
 
+# -- Readiness probe to check if the application is ready to serve traffic. If it fails, the pod is removed from the service endpoints.
+# -- Set to null to disable.
 readinessProbe:
   httpGet:
     path: /health
-    port: 8080
+    port: 8080 # Should match the application's targetPort.
   initialDelaySeconds: 10
   periodSeconds: 15
   timeoutSeconds: 10
   successThreshold: 1
   failureThreshold: 5
 
+# ==============================================================================
+# Autoscaling
+# ==============================================================================
+# -- Horizontal Pod Autoscaler (HPA) configuration.
 autoscaling:
+  # -- If true, an HPA resource will be created.
   enabled: false
+  # -- Minimum number of replicas.
   minReplicas: 1
+  # -- Maximum number of replicas.
   maxReplicas: 2
+  # -- Target CPU utilization percentage to trigger scaling.
   targetCPUUtilizationPercentage: 80
+  # -- Target memory utilization percentage to trigger scaling.
   targetMemoryUtilizationPercentage: 80
 
+# ==============================================================================
+# Storage
+# ==============================================================================
+# -- PersistentVolumeClaim (PVC) configuration for persistent storage.
 storage:
-  create: false # Set to true if you want to create a PersistentVolumeClaim
-  name: "s3-data-pvc" # unique name for the storage
+  # -- If true, a PVC will be created.
+  create: false
+  # -- A unique name for the PVC.
+  name: "s3-data-pvc"
+  # -- The storage class to use. If empty, the default storage class is used.
   className: ""
+  # -- The access mode for the volume (e.g., ReadWriteOnce, ReadOnlyMany, ReadWriteMany).
   accessMode: ReadWriteMany
+  # -- The size of the persistent volume.
   size: 100Gi
 
+# -- Defines volumes to be mounted into the pod.
 volumes:
   - name: s3-data-pvc
-    # persistentVolumeClaim:  # Uncomment to use a PVC
-    #   claimName: s3-data-pvc  # name of the PVC to use
+    # persistentVolumeClaim:
+    #   claimName: s3-data-pvc
 
+# -- Defines where to mount the volumes within the container.
 volumeMounts:
   - name: s3-data-pvc
     mountPath: "/data"
 
-# sidecar container config to continuously sync s3 resources
+# ==============================================================================
+# S3 Sync Sidecar
+# ==============================================================================
+# -- Configuration for an optional sidecar container that continuously syncs data with an S3 bucket.
 s3sync:
+  # -- If true, the S3 sync sidecar container will be deployed.
   enabled: false
+  # -- The container image for the sidecar.
   image: "amazon/aws-cli"
-  region: "us-east-1"         # AWS region
-  syncInterval: "60"          # in seconds
+  # -- The AWS region of the S3 bucket.
+  region: "us-east-1"
+  # -- The synchronization interval in seconds.
+  syncInterval: "60"
+  # -- A list of sync targets.
   targets:
-    - s3Uri: ""               # e.g., "s3://my-bucket/path/"
+    - s3Uri: ""               # "s3://my-bucket/path/"
       localPath: ""           # "/data/.openad_models/..."
-      direction: "s3tolocal"  # direction options: "s3tolocal" (default), "localtos3", "twoway"
+      direction: "s3tolocal"  # Options: ("s3tolocal", "localtos3", or "twoway")
 
+# ==============================================================================
+# Node Scheduling
+# ==============================================================================
+# -- Assigns pods to specific nodes based on node labels.
 nodeSelector: {}
 
+# -- Allows pods to be scheduled on nodes with matching taints.
 tolerations: []
 #   - key: "nvidia.com/gpu"
 #     effect: "NoSchedule"
 
+# -- Specifies rules for pod anti-affinity and affinity.
 affinity: {}
