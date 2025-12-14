@@ -7,6 +7,7 @@ set -euo pipefail
 GREEN=$(tput setaf 2)
 YELLOW=$(tput setaf 3)
 BLUE=$(tput setaf 4)
+RED=$(tput setaf 1)
 BOLD=$(tput bold)
 RESET=$(tput sgr0)
 
@@ -14,9 +15,25 @@ RESET=$(tput sgr0)
 INSTALL_PATH="./charts"
 SUCCESS=false
 
+# Header and Footer
+print_header() {
+    echo -e "${BLUE}${BOLD}-----------------------------------------------------${RESET}"
+    echo -e "${BLUE}${BOLD}  🚀 AISUITE Helm Template Installer 🚀         ${RESET}"
+    echo -e "${BLUE}${BOLD}-----------------------------------------------------${RESET}\n"
+}
+
+print_footer() {
+    echo -e "\n${BLUE}${BOLD}-----------------------------------------------------${RESET}"
+    echo -e "${BLUE}${BOLD}  Installation process finished.                     ${RESET}"
+    echo -e "${BLUE}${BOLD}-----------------------------------------------------${RESET}"
+}
+
+# Trap to print footer on exit
+trap "print_footer" EXIT
+
 # Validate dependencies
-command -v git >/dev/null 2>&1 || { echo >&2 "git is required but not installed. Aborting."; exit 1; }
-command -v yq >/dev/null 2>&1 || { echo >&2 "yq is required but not installed. Aborting."; exit 1; }
+command -v git >/dev/null 2>&1 || { echo >&2 "${RED}❌ Error: git is required but not installed. Aborting.${RESET}"; exit 1; }
+command -v yq >/dev/null 2>&1 || { echo >&2 "${RED}❌ Error: yq is required but not installed. Aborting.${RESET}"; exit 1; }
 
 # Function to validate project name
 validate_project_name() {
@@ -24,7 +41,7 @@ validate_project_name() {
     
     # Optional: Add more validation if needed (e.g., must start with a letter)
     if [[ ! "$project_name" =~ ^[a-zA-Z][a-zA-Z0-9-]*$ ]]; then
-        echo "❌ Error: Project name must start with a letter and can only contain letters, numbers, and hyphens." >&2
+        echo "${RED}❌ Error: Project name must start with a letter and can only contain letters, numbers, and hyphens.${RESET}" >&2
         return 1
     fi
     
@@ -35,7 +52,7 @@ validate_project_name() {
 validate_port() {
     local port="$1"
     if [[ ! "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-        echo "❌ Error: Port must be a number between 1 and 65535." >&2
+        echo "${RED}❌ Error: Port must be a number between 1 and 65535.${RESET}" >&2
         return 1
     fi
     return 0
@@ -50,10 +67,10 @@ get_input() {
 
     while true; do
         if [ -n "$default" ]; then
-            read -p "🔹 $prompt [$default]: " input < /dev/tty
+            read -p "${BLUE}❓ $prompt${RESET} ${BOLD}[$default]${RESET}: " input < /dev/tty
             input=${input:-$default}
         else
-            read -p "🔹 $prompt: " input < /dev/tty
+            read -p "${BLUE}❓ $prompt${RESET}: " input < /dev/tty
         fi
 
         if [ -n "$input" ]; then
@@ -63,7 +80,7 @@ get_input() {
             echo ""
             break
         else
-            echo "Input cannot be empty. Please try again." >&2
+            echo "${RED}❌ Input cannot be empty. Please try again.${RESET}" >&2
         fi
     done
 }
@@ -71,11 +88,11 @@ get_input() {
 # Function to confirm overwrite
 confirm_overwrite() {
     if [ -d "$INSTALL_PATH" ] && [ -n "$(ls -A "$INSTALL_PATH" 2>/dev/null)" ]; then
-        echo "${YELLOW}Warning: The directory '$INSTALL_PATH' already exists and is not empty.${RESET}"
-        read -p "Continuing may overwrite shared configuration files. Do you want to proceed? [y/N]: " -n 1 -r REPLY < /dev/tty
+        echo "${YELLOW}⚠️ Warning: The directory '$INSTALL_PATH' already exists and is not empty.${RESET}"
+        read -p "${YELLOW}Continuing may overwrite shared configuration files. Do you want to proceed? [y/N]: ${RESET}" -n 1 -r REPLY < /dev/tty
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Operation cancelled."
+            echo "${BLUE}Operation cancelled.${RESET}"
             exit 1
         fi
     fi
@@ -92,7 +109,7 @@ check_project_exists() {
     
     # Check if the project directory exists
     if [ -d "$INSTALL_PATH/$project_name" ]; then
-        echo "❌ Error: A project with the name '$project_name' already exists." >&2
+        echo "${RED}❌ Error: A project with the name '$project_name' already exists.${RESET}" >&2
         return 0
     fi
 
@@ -100,7 +117,7 @@ check_project_exists() {
     if [ -f "$INSTALL_PATH/helmfile.yaml" ]; then
         local existing_project=$(yq ".releases[].name" $INSTALL_PATH/helmfile.yaml 2>/dev/null | grep "^$project_name$")
         if [ -n "$existing_project" ]; then
-            echo "❌ Error: A project with the name '$project_name' is already configured in helmfile.yaml." >&2
+            echo "${RED}❌ Error: A project with the name '$project_name' is already configured in helmfile.yaml.${RESET}" >&2
             return 0
         fi
     fi
@@ -119,6 +136,20 @@ ensure_releases_section() {
     fi
 }
 
+# Function for a simple spinner
+show_progress() {
+    local pid=$1
+    local delay=0.1
+    local spinstr="-\|/"
+    local i=0
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) % ${#spinstr} ))
+        printf "\r  ${BLUE}%c ${RESET}" "${spinstr:$i:1}"
+        sleep $delay
+    done
+    printf "\r   \r" # Clear the spinner line
+}
+
 # Create a temporary directory for the setup
 TEMP_DIR=$(mktemp -d)
 
@@ -128,17 +159,21 @@ cleanup_on_exit() {
     rm -rf "$TEMP_DIR"
 
     if [ "$SUCCESS" = "true" ]; then
-        echo -e "\n   ${GREEN}🎉 Project setup complete for ${BOLD}$project_name${RESET}\n"
-        echo "   Next steps:"
-        echo -e "   ${YELLOW}📝 Update Chart Values${RESET}   --> $INSTALL_PATH/$project_name/values.yaml"
-        echo -e "   ${BLUE}🚀 Deploy The Helm Chart${RESET} --> helmfile -f $INSTALL_PATH/helmfile.yaml apply"
-        echo -e "   ${BLUE}🤖 Deploy With ArgoCD${RESET}    --> kubectl apply -f $INSTALL_PATH/argocd/application.yaml\n"
+        echo -e "\n${GREEN}${BOLD}🎉 Installation Complete! 🎉${RESET}"
+        echo -e "${GREEN}Project '${project_name}' has been successfully set up.${RESET}\n"
+        echo -e "${BOLD}Next Steps:${RESET}"
+        echo -e "  ${YELLOW}📝 Update Chart Values: ${RESET}${BOLD}$INSTALL_PATH/$project_name/values.yaml${RESET}"
+        echo -e "  ${BLUE}🚀 Deploy The Helm Chart: ${RESET}${BOLD}helmfile -f $INSTALL_PATH/helmfile.yaml apply${RESET}"
+        echo -e "  ${BLUE}🤖 Deploy With ArgoCD: ${RESET}${BOLD}kubectl apply -f $INSTALL_PATH/argocd/application.yaml${RESET}\n"
     else
-        echo "An error occurred or script was interrupted"
-        echo "Cleanup finished."
+        echo -e "\n${RED}Installation encountered an error or was interrupted.${RESET}"
+        echo -e "${YELLOW}Temporary files have been cleaned up.${RESET}"
     fi
 }
 trap cleanup_on_exit EXIT
+
+# Print header
+print_header
 
 # Prompt for overwrite if necessary
 confirm_overwrite
@@ -197,8 +232,11 @@ TARGET_PROJECT_DIR="$TEMP_DIR/$project_name"
 TARGET_ARGOCD_DIR="$TEMP_DIR/argocd"
 TARGET_HELMFILE="$TEMP_DIR/helmfile.yaml"
 
-# Clone repository into temp dir
-git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git "$CLONE_DIR" > /dev/null 2>&1
+echo -e "${BLUE}⚙️  Cloning repository...${RESET}"
+git clone --depth 1 https://github.com/acceleratedscience/openad-model-helm-template.git "$CLONE_DIR" > /dev/null 2>&1 &
+show_progress $!
+echo -e "${GREEN}✅ Repository cloned.${RESET}"
+
 
 # Prepare directories in temp
 mkdir -p "$TARGET_PROJECT_DIR"
