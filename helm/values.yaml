@@ -1,6 +1,4 @@
-# Helm chart configuration values
 # This file contains the default values for your Helm chart.
-# You can override these values in a custom values.yaml file or via the --set flag.
 
 # -- Number of pod replicas to deploy.
 replicaCount: 1
